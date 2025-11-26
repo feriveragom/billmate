@@ -10,8 +10,8 @@ export interface RecurrenceRule {
 
 // Interfaces principales
 
-// PaymentInstance (antes Service): La realidad temporal (El Pago)
-export interface PaymentInstance {
+// ServiceInstance (antes PaymentInstance): La realidad temporal (La Instancia del Servicio)
+export interface ServiceInstance {
     id: string;
     definitionId: string; // Link a la definición (padre)
     amount: number;
@@ -32,13 +32,6 @@ export interface Activity {
     title: string;
     description: string;
     time: string;
-}
-
-export interface QuickAction {
-    id: string;
-    type: 'add' | 'payments' | 'upcoming' | 'alerts';
-    label: string;
-    icon: string;
 }
 
 // ServiceDefinition: Solo Identidad (La Carpeta)

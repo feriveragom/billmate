@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import TopHeader from '@/components/TopHeader';
-import QuickActions from '@/components/QuickActions';
-import ServicesScroll from '@/components/ServicesScroll';
+import ServiceDefinitions from '@/components/ServiceDefinitions';
+import ServiceInstances from '@/components/ServiceInstances';
 import ActivityFeed from '@/components/ActivityFeed';
 import BottomNav from '@/components/BottomNav';
 import DashboardPanel from '@/components/DashboardPanel';
@@ -35,8 +35,8 @@ export default function HomePage() {
 
           {/* Área scrolleable */}
           <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 lg:pb-0">
-            <QuickActions />
-            <ServicesScroll />
+            <ServiceDefinitions />
+            <ServiceInstances />
             <ActivityFeed showArchived={showArchivedView} />
           </div>
 

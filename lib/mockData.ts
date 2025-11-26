@@ -1,7 +1,7 @@
-import { PaymentInstance, Activity, ServiceDefinition } from './types';
+import { ServiceInstance, Activity, ServiceDefinition } from './types';
 
-// Datos mock - Instancias de Pago (La Realidad)
-export const initialPaymentInstances: PaymentInstance[] = [
+// Datos mock - Instancias de Servicios (La Realidad)
+export const initialServiceInstances: ServiceInstance[] = [
     {
         id: 'inst-1',
         definitionId: 'sys-agua',

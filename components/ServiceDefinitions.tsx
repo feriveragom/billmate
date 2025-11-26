@@ -9,7 +9,7 @@ import ServiceDefinitionForm from './ServiceDefinitionForm';
 import ConfirmDialog from './ConfirmDialog';
 import HorizontalScroll from './HorizontalScroll';
 
-export default function QuickActions() {
+export default function ServiceDefinitions() {
     const { serviceDefinitions, addServiceDefinition, updateServiceDefinition, deleteServiceDefinition } = useApp();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isGridView, setIsGridView] = useState(false);
@@ -264,3 +264,4 @@ function ServiceDefinitionCard({ name, icon, color, isSystemService, onClick, on
         </div>
     );
 }
+
