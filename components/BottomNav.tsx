@@ -7,7 +7,7 @@ export default function BottomNav() {
     const [active, setActive] = useState('home');
 
     return (
-        <nav className="w-full border-t border-primary/20 bg-elixir-pattern">
+        <nav className="w-full bg-elixir-pattern/95 backdrop-blur-md fixed bottom-0 left-0 z-40 lg:relative">
             <div className="w-full py-4 flex items-center justify-around">
                 <NavButton
                     icon={<Home size={24} />}
