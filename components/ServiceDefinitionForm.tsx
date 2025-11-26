@@ -14,12 +14,6 @@ export default function ServiceDefinitionForm({ initialData, onSave, onCancel, c
     const [formData, setFormData] = useState<Partial<ServiceDefinition>>({
         name: '',
         icon: '📝',
-        title: '',
-        scheduleMode: 'fixed',
-        fixedDay: 5,
-        rollingDays: 30,
-        reminderDays: 2,
-        dueTime: '12:00',
         color: '#8B5CF6',
         category: 'General',
         isSystemService: false
@@ -230,17 +224,7 @@ export default function ServiceDefinitionForm({ initialData, onSave, onCancel, c
                 </div>
             </div>
 
-            {/* Descripción / Título */}
-            <div>
-                <label className="block text-xs font-medium text-foreground/70 mb-2">Descripción Corta</label>
-                <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => handleChange('title', e.target.value)}
-                    className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
-                    placeholder="Ej: Suscripción mensual de streaming"
-                />
-            </div>
+
 
             {/* Toggle: Proteger contra eliminación */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-card/50 border border-white/5">
@@ -263,99 +247,7 @@ export default function ServiceDefinitionForm({ initialData, onSave, onCancel, c
                 </button>
             </div>
 
-            {/* Modo de Programación */}
-            <div>
-                <label className="block text-xs font-medium text-foreground/70 mb-2">Tipo de Frecuencia</label>
-                <div className="grid grid-cols-2 gap-2">
-                    <button
-                        type="button"
-                        onClick={() => handleChange('scheduleMode', 'fixed')}
-                        className={`p-2 rounded-xl border flex items-center justify-center gap-2 transition ${formData.scheduleMode === 'fixed'
-                            ? 'bg-primary/20 border-primary text-primary'
-                            : 'bg-card border-white/10 hover:bg-white/5'
-                            }`}
-                    >
-                        <Calendar size={16} />
-                        <span className="text-sm font-medium">Fecha Fija</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => handleChange('scheduleMode', 'rolling')}
-                        className={`p-2 rounded-xl border flex items-center justify-center gap-2 transition ${formData.scheduleMode === 'rolling'
-                            ? 'bg-primary/20 border-primary text-primary'
-                            : 'bg-card border-white/10 hover:bg-white/5'
-                            }`}
-                    >
-                        <RefreshCw size={16} />
-                        <span className="text-sm font-medium">Cíclico</span>
-                    </button>
-                </div>
-            </div>
 
-            {/* Configuración de Fechas */}
-            <div className="p-3 rounded-xl bg-card/50 border border-white/5 space-y-2">
-                {/* Grid de 3 columnas en desktop, 1 en móvil */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {/* Día de vencimiento o días cíclicos */}
-                    {formData.scheduleMode === 'fixed' ? (
-                        <div>
-                            <label className="block text-xs font-medium text-foreground/70 mb-1">El día</label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="31"
-                                value={formData.fixedDay ?? ''}
-                                onChange={(e) => handleChange('fixedDay', e.target.value ? parseInt(e.target.value) : undefined)}
-                                className="w-full px-3 py-2 bg-background border border-white/10 rounded-lg focus:border-primary outline-none text-sm"
-                                placeholder="5"
-                            />
-                        </div>
-                    ) : (
-                        <div>
-                            <label className="block text-xs font-medium text-foreground/70 mb-1">Cada (días)</label>
-                            <input
-                                type="number"
-                                min="1"
-                                value={formData.rollingDays ?? ''}
-                                onChange={(e) => handleChange('rollingDays', e.target.value ? parseInt(e.target.value) : undefined)}
-                                className="w-full px-3 py-2 bg-background border border-white/10 rounded-lg focus:border-primary outline-none text-sm"
-                                placeholder="30"
-                            />
-                        </div>
-                    )}
-
-                    {/* Días de anticipación */}
-                    <div>
-                        <label className="block text-xs font-medium text-foreground/70 mb-1">Alarmas</label>
-                        <div className="relative">
-                            <Bell className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40" size={14} />
-                            <input
-                                type="number"
-                                min="0"
-                                max="30"
-                                value={formData.reminderDays ?? ''}
-                                onChange={(e) => handleChange('reminderDays', e.target.value ? parseInt(e.target.value) : 0)}
-                                className="w-full pl-7 pr-2 py-2 bg-background border border-white/10 rounded-lg focus:border-primary outline-none text-sm"
-                                placeholder="2"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Hora límite */}
-                    <div>
-                        <label className="block text-xs font-medium text-foreground/70 mb-1">Hora Límite</label>
-                        <div className="relative">
-                            <Clock className="absolute left-2 top-1/2 -translate-y-1/2 text-foreground/40" size={14} />
-                            <input
-                                type="time"
-                                value={formData.dueTime || '12:00'}
-                                onChange={(e) => handleChange('dueTime', e.target.value)}
-                                className="w-full pl-7 pr-2 py-2 bg-background border border-white/10 rounded-lg focus:border-primary outline-none text-sm"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
 
 
 

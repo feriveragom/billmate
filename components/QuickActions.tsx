@@ -1,26 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, LayoutGrid, ArrowRightLeft, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ServiceDefinition } from '@/lib/types';
-import InfiniteCarousel from './InfiniteCarousel';
 import Modal from './Modal';
 import ServiceDefinitionForm from './ServiceDefinitionForm';
 import ConfirmDialog from './ConfirmDialog';
+import HorizontalScroll from './HorizontalScroll';
 
 export default function QuickActions() {
-    const { services, serviceDefinitions, addServiceDefinition, updateServiceDefinition, deleteServiceDefinition } = useApp();
+    const { serviceDefinitions, addServiceDefinition, updateServiceDefinition, deleteServiceDefinition } = useApp();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isGridView, setIsGridView] = useState(false);
+    const [isHidden, setIsHidden] = useState(false);
     const [editingDefinition, setEditingDefinition] = useState<ServiceDefinition | null>(null);
     const [selectedColor, setSelectedColor] = useState('#8B5CF6');
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; definition: ServiceDefinition | null }>({
         isOpen: false,
         definition: null
     });
-
-    const pendingCount = services.filter(s => s.status === 'pending').length;
-    const overdueCount = services.filter(s => s.status === 'overdue').length;
 
     // Convertir HSL a HEX
     const hslToHex = (h: number, s: number, l: number): string => {
@@ -55,19 +54,6 @@ export default function QuickActions() {
         }
 
         return newColor;
-    };
-
-    const getCount = (type: string) => {
-        switch (type) {
-            case 'payments':
-                return services.length;
-            case 'upcoming':
-                return pendingCount;
-            case 'alerts':
-                return overdueCount;
-            default:
-                return 0;
-        }
     };
 
     const handleAddClick = () => {
@@ -106,12 +92,6 @@ export default function QuickActions() {
                 id: `def-${Date.now()}`,
                 name: data.name || 'Nuevo Servicio',
                 icon: data.icon || '📝',
-                title: data.title || '',
-                scheduleMode: data.scheduleMode || 'fixed',
-                fixedDay: data.fixedDay,
-                rollingDays: data.rollingDays,
-                reminderDays: data.reminderDays || 3,
-                dueTime: data.dueTime || '12:00',
                 category: data.category || 'General',
                 color: selectedColor
             };
@@ -120,54 +100,88 @@ export default function QuickActions() {
         setIsModalOpen(false);
     };
 
-    const allItems = [
-        { id: 'add', type: 'add', label: 'Nuevo', icon: '➕', isPrimary: true },
-        ...serviceDefinitions.map(def => ({ ...def, kind: 'definition' }))
-    ];
+    const handleViewChange = () => {
+        setIsGridView(!isGridView);
+        if (isHidden) setIsHidden(false); // Auto-mostrar si está oculto
+    };
 
     return (
-        <section className="px-4 py-4">
-            <InfiniteCarousel
-                items={allItems}
-                renderItem={(item: any) => {
-                    if (item.type === 'add') {
-                        return (
-                            <button
-                                onClick={handleAddClick}
-                                className="flex-shrink-0 flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-gradient-elixir text-white shadow-lg transform transition hover:scale-105 active:scale-95"
-                            >
-                                <Plus size={28} />
-                                <span className="text-xs mt-1">{item.label}</span>
-                            </button>
-                        );
-                    }
+        <section className="py-4 px-4">
+            <div className="flex items-center justify-between mb-3 px-1">
+                <h2 className="text-sm font-semibold text-foreground/60">MIS SERVICIOS</h2>
+                <div className="flex items-center gap-2">
+                    {/* Toggle Horizontal/Grid */}
+                    <button
+                        onClick={handleViewChange}
+                        className="p-1.5 hover:bg-primary/10 rounded-lg transition text-primary/80"
+                        title={isGridView ? "Vista horizontal" : "Vista de cuadrícula"}
+                    >
+                        {isGridView ? <ArrowRightLeft size={20} /> : <LayoutGrid size={20} />}
+                    </button>
+                    
+                    {/* Toggle Show/Hide */}
+                    <button
+                        onClick={() => setIsHidden(!isHidden)}
+                        className="p-1.5 hover:bg-primary/10 rounded-lg transition text-primary/80"
+                        title={isHidden ? "Mostrar servicios" : "Ocultar servicios"}
+                    >
+                        {isHidden ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                </div>
+            </div>
 
-                    if (item.kind === 'definition') {
-                        return (
-                            <ServiceDefinitionCard
-                                name={item.name}
-                                icon={item.icon}
-                                title={item.title}
-                                color={item.color}
-                                isSystemService={item.isSystemService}
-                                onClick={() => handleEditClick(item)}
-                                onDelete={(e) => handleDeleteClick(e, item)}
-                            />
-                        );
-                    }
+            {!isHidden && (isGridView ? (
+                /* Grid View */
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto custom-scrollbar p-1">
+                    {/* Botón Nuevo */}
+                    <button
+                        onClick={handleAddClick}
+                        className="flex flex-col items-center justify-center aspect-square rounded-2xl bg-gradient-elixir text-white shadow-lg transform transition hover:scale-105 active:scale-95"
+                    >
+                        <Plus size={28} />
+                        <span className="text-xs mt-1">Nuevo</span>
+                    </button>
 
-                    return (
-                        <ActionCard
-                            icon={item.icon}
-                            label={item.label}
-                            count={getCount(item.type)}
+                    {/* Service Definitions */}
+                    {serviceDefinitions.map(def => (
+                        <ServiceDefinitionCard
+                            key={def.id}
+                            name={def.name}
+                            icon={def.icon}
+                            color={def.color}
+                            isSystemService={def.isSystemService}
+                            onClick={() => handleEditClick(def)}
+                            onDelete={(e) => handleDeleteClick(e, def)}
+                            className="w-full h-full aspect-square"
                         />
-                    );
-                }}
-                itemWidth={80}
-                gap={12}
-                align="start"
-            />
+                    ))}
+                </div>
+            ) : (
+                /* Horizontal Scroll View */
+                <HorizontalScroll>
+                    {/* Botón Nuevo */}
+                    <button
+                        onClick={handleAddClick}
+                        className="flex-shrink-0 flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-gradient-elixir text-white shadow-lg transform transition hover:scale-105 active:scale-95"
+                    >
+                        <Plus size={28} />
+                        <span className="text-xs mt-1">Nuevo</span>
+                    </button>
+
+                    {/* Service Definitions */}
+                    {serviceDefinitions.map(def => (
+                        <ServiceDefinitionCard
+                            key={def.id}
+                            name={def.name}
+                            icon={def.icon}
+                            color={def.color}
+                            isSystemService={def.isSystemService}
+                            onClick={() => handleEditClick(def)}
+                            onDelete={(e) => handleDeleteClick(e, def)}
+                        />
+                    ))}
+                 </HorizontalScroll>
+             ))}
 
             <Modal
                 isOpen={isModalOpen}
@@ -206,28 +220,14 @@ export default function QuickActions() {
     );
 }
 
-function ActionCard({ icon, label, count }: { icon: string; label: string; count: number }) {
-    return (
-        <button className="flex-shrink-0 relative flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-card border border-primary/20 hover:border-primary/40 transition shadow-soft">
-            <div className="text-2xl">{icon}</div>
-            <span className="text-xs mt-1 text-foreground">{label}</span>
-            {count > 0 && (
-                <span className="absolute top-1 right-1 w-5 h-5 bg-accent text-primary-dark text-xs font-bold rounded-full flex items-center justify-center">
-                    {count}
-                </span>
-            )}
-        </button>
-    );
-}
-
-function ServiceDefinitionCard({ name, icon, title, color, isSystemService, onClick, onDelete }: {
+function ServiceDefinitionCard({ name, icon, color, isSystemService, onClick, onDelete, className }: {
     name: string;
     icon: string;
-    title: string;
     color?: string;
     isSystemService?: boolean;
     onClick: () => void;
     onDelete: (e: React.MouseEvent) => void;
+    className?: string;
 }) {
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
 
@@ -236,9 +236,9 @@ function ServiceDefinitionCard({ name, icon, title, color, isSystemService, onCl
             onClick={onClick}
             role="button"
             tabIndex={0}
-            className="flex-shrink-0 relative group flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-card border border-primary/20 hover:border-primary/40 transition shadow-soft hover:scale-105 active:scale-95 cursor-pointer"
+            className={`flex-shrink-0 relative group flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-card border border-primary/20 hover:border-primary/40 transition hover:scale-105 active:scale-95 cursor-pointer ${className || ''}`}
             style={{ borderLeftColor: color, borderLeftWidth: color ? '3px' : '1px' }}
-            title={title}
+            title={name}
         >
             {/* Botón de eliminar - solo si NO es servicio del sistema */}
             {!isSystemService && (

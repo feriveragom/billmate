@@ -39,9 +39,9 @@ export default function Modal({ isOpen, onClose, title, children, colorPicker }:
             <div
                 className={`
                     relative w-full max-w-lg bg-elixir-pattern backdrop-blur-xl border-t sm:border border-white/10 
-                    rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col h-[95vh] sm:max-h-[90vh] sm:h-auto
+                    rounded-3xl sm:rounded-3xl shadow-2xl flex flex-col h-auto max-h-[90vh]
                     transform transition-transform duration-300 ease-out
-                    ${isOpen ? 'translate-y-0 scale-100' : '-translate-y-full sm:translate-y-10 sm:scale-95'}
+                    ${isOpen ? 'translate-y-0 scale-100' : 'translate-y-full sm:translate-y-10 sm:scale-95'}
                 `}
             >
                 {/* Header */}

@@ -1,15 +1,15 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Service, Activity, ServiceDefinition } from './types';
-import { initialServices, initialActivities, initialServiceDefinitions } from './mockData';
+import { PaymentInstance, Activity, ServiceDefinition } from './types';
+import { initialPaymentInstances, initialActivities, initialServiceDefinitions } from './mockData';
 
 // Re-export types for convenience
-export type { Service, Activity, ServiceDefinition, ServiceStatus } from './types';
+export type { PaymentInstance, Activity, ServiceDefinition, ServiceStatus } from './types';
 
 // Context State
 interface AppState {
-    services: Service[];
+    services: PaymentInstance[];
     activities: Activity[];
     archivedActivities: Activity[];
     serviceDefinitions: ServiceDefinition[];
@@ -20,8 +20,8 @@ interface AppState {
 
 // Context API
 interface AppContextType extends AppState {
-    addService: (service: Service) => void;
-    updateService: (id: string, updates: Partial<Service>) => void;
+    addService: (service: PaymentInstance) => void;
+    updateService: (id: string, updates: Partial<PaymentInstance>) => void;
     deleteService: (id: string) => void;
     addServiceDefinition: (definition: ServiceDefinition) => void;
     updateServiceDefinition: (id: string, updates: Partial<ServiceDefinition>) => void;
@@ -35,18 +35,18 @@ interface AppContextType extends AppState {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const [services, setServices] = useState<Service[]>(initialServices);
+    const [services, setServices] = useState<PaymentInstance[]>(initialPaymentInstances);
     const [activities, setActivities] = useState<Activity[]>(initialActivities);
     const [archivedActivities, setArchivedActivities] = useState<Activity[]>([]);
     const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>(initialServiceDefinitions);
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [showArchivedView, setShowArchivedView] = useState(false);
 
-    const addService = (service: Service) => {
+    const addService = (service: PaymentInstance) => {
         setServices(prev => [...prev, service]);
     };
 
-    const updateService = (id: string, updates: Partial<Service>) => {
+    const updateService = (id: string, updates: Partial<PaymentInstance>) => {
         setServices(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
     };
 

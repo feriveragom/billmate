@@ -33,13 +33,9 @@ export default function HomePage() {
             <TopHeader onDashboardClick={() => setIsDrawerOpen(true)} />
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex-none">
-            <QuickActions />
-          </div>
-
           {/* Área scrolleable */}
           <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 lg:pb-0">
+            <QuickActions />
             <ServicesScroll />
             <ActivityFeed showArchived={showArchivedView} />
           </div>

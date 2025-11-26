@@ -1,15 +1,28 @@
 // Types y enums
 export type ServiceStatus = 'paid' | 'pending' | 'overdue';
+export type RecurrenceType = 'monthly' | 'interval' | 'one_time';
+
+export interface RecurrenceRule {
+    type: RecurrenceType;
+    dayOfMonth?: number; // Para 'monthly' (ej: 5)
+    intervalDays?: number; // Para 'interval' (ej: 30)
+}
 
 // Interfaces principales
-export interface Service {
+
+// PaymentInstance (antes Service): La realidad temporal (El Pago)
+export interface PaymentInstance {
     id: string;
-    name: string;
+    definitionId: string; // Link a la definición (padre)
     amount: number;
-    dueDate: number;
+    dueDate: string; // Fecha completa ISO (YYYY-MM-DD)
     status: ServiceStatus;
+    recurrence?: RecurrenceRule; // Regla de repetición propia de esta instancia
+
+    // Campos desnormalizados para facilidad de UI (se llenan desde la definición)
+    name: string;
     icon: string;
-    provider?: string;
+    color: string;
 }
 
 export interface Activity {
@@ -28,17 +41,12 @@ export interface QuickAction {
     icon: string;
 }
 
+// ServiceDefinition: Solo Identidad (La Carpeta)
 export interface ServiceDefinition {
     id: string;
     name: string;
     icon: string;
-    title?: string;
-    scheduleMode: 'fixed' | 'rolling';
-    fixedDay?: number;
-    rollingDays?: number;
-    reminderDays: number; // Días de anticipación para alertas
-    dueTime: string;      // Hora límite de pago (HH:MM)
     color: string;
-    category: string;
-    isSystemService?: boolean; // Indica si es un servicio predefinido del sistema (no se puede eliminar)
+    category?: string;
+    isSystemService?: boolean; // Indica si es un servicio predefinido del sistema
 }

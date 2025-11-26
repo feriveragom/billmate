@@ -54,9 +54,17 @@ function ActivityCard({
     onArchive: () => void;
     onUnarchive: () => void;
 }) {
+    const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
+
     return (
         <div className="flex items-start gap-3 p-4 rounded-2xl bg-card border border-primary/10 hover:border-primary/30 transition">
-            <div className="text-2xl">{icon}</div>
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-primary/5 text-2xl overflow-hidden">
+                {isImage(icon) ? (
+                    <img src={icon} alt={title} className="w-full h-full object-cover" />
+                ) : (
+                    <span>{icon}</span>
+                )}
+            </div>
             <div className="flex-1">
                 <h4 className="font-semibold text-foreground">{title}</h4>
                 <p className="text-sm text-foreground/70">{description}</p>

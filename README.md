@@ -1,10 +1,11 @@
 # Getting Started
 
 ```bash
+nvm list
+    * 20.17.0 (Currently using 64-bit executable)
+    
 npx -y create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias "@/*" --use-npm
-```
 
-```bash
 npm run dev
 ```
 
@@ -96,11 +97,11 @@ Supera a la lista de tareas:
 
 ### Patrones de Diseño Aplicados
 
-#### Definition + Projection Pattern (Base de Datos)
-*   **Definition Table:** Almacena la *regla* (ej: "Internet, día 5 de cada mes").
-*   **Instance Table:** Almacena las *materializaciones* concretas (ej: "Internet Noviembre 2024").
-*   **Projection Engine:** Proceso (Cron Job) que lee las Definitions y genera Instances futuras para un "window" de tiempo (próximos 90 días).
-*   **Beneficio:** Eficiencia (no duplicados infinitos) y flexibilidad (modificar Definition recalcula Instances futuras).
+#### Chain of Instances Pattern (Base de Datos)
+*   **Definition Table:** Almacena solo la *Identidad* (Nombre, Icono, Color). No tiene reglas de tiempo.
+*   **Instance Table:** Almacena la *Realidad* (Monto, Fecha, Estado) y la *Regla de Recurrencia* (ej: "Repetir mensualmente").
+*   **Chain Generation Engine:** Proceso que mira la *última instancia* activa. Si tiene regla de recurrencia, genera la siguiente (hija) clonando datos y proyectando fecha.
+*   **Beneficio:** Flexibilidad total. Cambiar el monto o fecha de un mes no rompe la historia ni el futuro lejano. Cada pago tiene vida propia.
 
 #### Offline-First Pattern (PWA)
 *   **Service Worker** cachea la UI y datos críticos.
@@ -123,9 +124,9 @@ Supera a la lista de tareas:
 
 ```
 1. CREACIÓN (Usuario):
-   Usuario → PWA → Server Action → Supabase (Definition creada)
+   Usuario → PWA → Server Action → Supabase (Crea Definition + Primera Instance)
    ↓
-   Server Action → Projection Engine → Supabase (Instances para 90 días)
+   Server Action → Chain Engine → Supabase (Si es recurrente, proyecta siguiente Instance)
 
 2. ORQUESTACIÓN DIARIA (Cron):
    Vercel Cron (9:00 AM) → API Route → Supabase (consulta instances próximas)
@@ -159,10 +160,10 @@ Funcionalidades para la "Magia Social" y automatización avanzada:
 
 ## 5. Glosario de Términos
 
-*   **Suscripción (antes "Definición"):** La regla recurrente (ej: "Internet, día 5 de cada mes"). Configura recurrencia y alertas.
-*   **Pago (antes "Instancia"):** La obligación concreta a pagar (ej: "Internet Diciembre 2024"). Tiene fecha, monto y estado.
-*   **Ciclo:** Periodo entre un pago y el siguiente.
-*   **Proyección:** Generación automática de pagos futuros basados en la suscripción.
+*   **Suscripción (Definition):** Solo la "Carpeta" o Etiqueta (Nombre, Icono, Color). No sabe cuándo vence.
+*   **Pago (Instance):** El objeto inteligente. Sabe Cuánto, Cuándo y Cómo se repite. Es el que genera alertas.
+*   **Generación en Cadena:** El sistema crea el pago de Febrero basándose en las reglas del pago de Enero, no de una plantilla maestra.
+*   **Proyección:** Visualización de pagos futuros calculados por el motor de cadena.
 
 ## Del MVP Definido, lo que YA funciona:
 ### ✅ HECHO (Funcional):
