@@ -1,26 +1,92 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Elixir Brand Colors - Light Mode */
+  --background: #f8f7fa;
+  --foreground: #2d2438;
+
+  --primary: #4e2a8e;
+  --primary-light: #7d56c2;
+  --primary-dark: #3b1f6e;
+  --accent: #d499ff;
+
+  --card-bg: #ffffff;
+  --sidebar-bg: rgba(255, 255, 255, 0.8);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Dark Mode - activado con clase .dark */
+.dark {
+  --background: #0f0b15;
+  --foreground: #eecfff;
+  --card-bg: #1a1625;
+  --sidebar-bg: rgba(26, 22, 37, 0.8);
+
+  /* Mantener los colores morados igual */
+  --primary: #7d56c2;
+  --primary-light: #a66cc3;
+  --primary-dark: #4e2a8e;
+  --accent: #d499ff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  overflow: hidden; /* Prevenir scroll externo */
+}
+
+/* Glassmorphism */
+.glass {
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Elixir Gradient Text */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Elixir Gradient Background */
+.bg-gradient-elixir {
+  background: linear-gradient(135deg, var(--primary), #7d56c2);
+}
+
+/* Hide Scrollbar (Social Media Style) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Desktop Background - Elixir Light Purple/Lavender */
+/* Desktop Background - Elixir Light Purple/Lavender */
+.bg-elixir-pattern {
+  background: #e6d9f5;
+}
+
+.dark .bg-elixir-pattern {
+  background: #1a1625;
+  /* Borde eliminado para evitar scroll */
 }
