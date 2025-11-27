@@ -33,9 +33,9 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
 
     // Filtros locales para la vista de archivados
     const [filters, setFilters] = useState<{ [key in ServiceStatus]?: boolean }>({
-        paid: true,
-        overdue: true,
-        cancelled: true
+        paid: false,
+        overdue: false,
+        cancelled: false
     });
 
     const toggleFilter = (status: ServiceStatus) => {
@@ -46,6 +46,11 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
     const visibleServices = services.filter(service => {
         if (showArchived) {
             const isArchivedStatus = service.status === 'paid' || service.status === 'overdue' || service.status === 'cancelled';
+            
+            // Si no hay filtros activos, mostrar todo
+            const hasActiveFilters = Object.values(filters).some(Boolean);
+            if (!hasActiveFilters) return isArchivedStatus;
+
             return isArchivedStatus && filters[service.status];
         }
         return service.status === 'pending';
@@ -144,18 +149,21 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                                 onClick={() => toggleFilter('paid')} 
                                 icon={<CheckCircle size={18} />} 
                                 colorClass="text-green-500" 
+                                title="Pagados"
                             />
                             <FilterButton 
                                 active={filters.overdue} 
                                 onClick={() => toggleFilter('overdue')} 
                                 icon={<AlertCircle size={18} />} 
                                 colorClass="text-red-500" 
+                                title="Vencidos"
                             />
                             <FilterButton 
                                 active={filters.cancelled} 
                                 onClick={() => toggleFilter('cancelled')} 
                                 icon={<XCircle size={18} />} 
                                 colorClass="text-gray-400" 
+                                title="Cancelados"
                             />
                         </div>
                     )}
@@ -183,7 +191,7 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                 <div className="min-h-[100px]">
                     {viewMode === 'feed' ? (
                         /* FEED VIEW (Vertical List) */
-                        <div className="flex flex-col gap-3 pb-20">
+                        <div className="flex flex-col gap-3">
                             {visibleServices.map(service => {
                                 const def = serviceDefinitions.find(d => d.id === service.definitionId);
                                 const effectiveService = def ? { ...service, color: def.color, icon: def.icon } : service;
@@ -281,13 +289,16 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
 
 // --- Subcomponents ---
 
-function FilterButton({ active, onClick, icon, colorClass }: { active?: boolean, onClick: () => void, icon: React.ReactNode, colorClass: string }) {
+function FilterButton({ active, onClick, icon, colorClass, title }: { active?: boolean, onClick: () => void, icon: React.ReactNode, colorClass: string, title: string }) {
     return (
         <button
             onClick={onClick}
+            title={title}
             className={cn(
                 "p-1.5 rounded-md transition-all",
-                active ? `bg-opacity-10 ${colorClass.replace('text-', 'bg-')} ${colorClass}` : "text-muted-foreground hover:text-foreground"
+                active 
+                    ? `bg-opacity-15 ${colorClass.replace('text-', 'bg-')} ${colorClass}` 
+                    : `${colorClass} hover:bg-accent opacity-70 hover:opacity-100`
             )}
         >
             {icon}
@@ -332,16 +343,27 @@ function ServiceInstanceFeedItem({
         statusText = `Vence en ${diffDays} días`;
     }
 
-    // Color del título según estado (para Historial)
+    // Color del título y borde según estado
     let titleColor = "text-foreground";
-    if (service.status === 'paid') titleColor = "text-green-600";
-    else if (service.status === 'overdue') titleColor = "text-red-500";
-    else if (service.status === 'cancelled') titleColor = "text-muted-foreground line-through";
+    let borderColor = "border-border/50";
+
+    if (service.status === 'paid') {
+        titleColor = "text-green-600";
+        borderColor = "border-green-500/50";
+    } else if (service.status === 'overdue') {
+        titleColor = "text-red-500";
+        borderColor = "border-red-500/50";
+    } else if (service.status === 'cancelled') {
+        titleColor = "text-muted-foreground line-through";
+    }
 
     return (
         <div 
             onClick={onClick}
-            className="group relative flex items-center gap-4 p-4 bg-card hover:bg-accent/50 rounded-2xl border border-border/50 shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+            className={cn(
+                "group relative flex items-center gap-4 p-4 bg-card hover:bg-accent/50 rounded-2xl border shadow-sm transition-all active:scale-[0.99] cursor-pointer",
+                borderColor
+            )}
         >
             {/* Icon */}
             <div 
@@ -435,13 +457,15 @@ function ServiceInstanceStoryItem({
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
     
     // Status Border Color
-    const today = new Date();
-    const due = new Date(service.dueDate);
-    const isOverdue = due < today && due.getDate() !== today.getDate();
-    
     let ringColor = "ring-primary/30"; // Default
-    if (isOverdue) ringColor = "ring-red-500";
-    else if (service.status === 'paid') ringColor = "ring-green-500";
+    if (service.status === 'paid') ringColor = "ring-green-500";
+    else if (service.status === 'overdue') ringColor = "ring-red-500";
+
+    // Color del título según estado
+    let titleColor = "text-muted-foreground";
+    if (service.status === 'paid') titleColor = "text-green-600";
+    else if (service.status === 'overdue') titleColor = "text-red-500";
+    else if (service.status === 'cancelled') titleColor = "text-muted-foreground line-through";
 
     return (
         <div 
@@ -505,7 +529,7 @@ function ServiceInstanceStoryItem({
                 )}
             </AnimatePresence>
 
-            <span className="text-[10px] font-medium text-muted-foreground text-center truncate w-full px-1">
+            <span className={cn("text-[10px] font-medium text-center truncate w-full px-1", titleColor)}>
                 {service.name}
             </span>
         </div>
