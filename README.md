@@ -142,12 +142,3 @@ vamos a crear un plan para abordar estos 3 puntos que son sin duda alguna el cor
 ver MVP_Core_Implementation_Plan.md
 ```
 
-```
-seguir la clean arquitecture
-```
-
-```
-vayamos un rato al diseño, hay cosas que necesitamos discutir
-no programes, conversemos
-para la vista movil, veo que estas serviceinstances y servicedefinitions estan muy grandes, sin embargo me he quedado sin ideas, necesito que revises en internet y me des propuestas aterrizadas, practicas, de como se hace esto para movil, eventualmente este sitio sera tambien un apk, estos iconos son muy grandes, lo mas complejo es que tienen acciones
-```
