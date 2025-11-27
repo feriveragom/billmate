@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-    LayoutList, 
-    LayoutGrid, 
-    Eye, 
-    EyeOff, 
-    Pencil, 
-    Trash2, 
-    CheckCircle, 
-    AlertCircle, 
-    XCircle, 
-    MoreVertical, 
-    Calendar, 
-    DollarSign 
+import {
+    LayoutList,
+    LayoutGrid,
+    Eye,
+    EyeOff,
+    Pencil,
+    Trash2,
+    CheckCircle,
+    AlertCircle,
+    XCircle,
+    MoreVertical,
+    Calendar,
+    DollarSign,
+    FileText
 } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ServiceInstance, ServiceStatus } from '@/lib/types';
@@ -46,7 +47,7 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
     const visibleServices = services.filter(service => {
         if (showArchived) {
             const isArchivedStatus = service.status === 'paid' || service.status === 'overdue' || service.status === 'cancelled';
-            
+
             // Si no hay filtros activos, mostrar todo
             const hasActiveFilters = Object.values(filters).some(Boolean);
             if (!hasActiveFilters) return isArchivedStatus;
@@ -127,7 +128,8 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                 status: data.status || 'pending',
                 recurrence: data.recurrence || null,
                 reminderDaysBefore: data.reminderDaysBefore || 3,
-                dailyReminders: data.dailyReminders || 2
+                dailyReminders: data.dailyReminders || 2,
+                forAccounting: data.forAccounting || false
             };
             addService(newInstance);
         }
@@ -144,25 +146,25 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                     {/* Filtros para Archivados */}
                     {showArchived && (
                         <div className="flex items-center gap-1 mr-2 border-r border-border/50 pr-2">
-                            <FilterButton 
-                                active={filters.paid} 
-                                onClick={() => toggleFilter('paid')} 
-                                icon={<CheckCircle size={18} />} 
-                                colorClass="text-green-500" 
+                            <FilterButton
+                                active={filters.paid}
+                                onClick={() => toggleFilter('paid')}
+                                icon={<CheckCircle size={18} />}
+                                colorClass="text-green-500"
                                 title="Pagados"
                             />
-                            <FilterButton 
-                                active={filters.overdue} 
-                                onClick={() => toggleFilter('overdue')} 
-                                icon={<AlertCircle size={18} />} 
-                                colorClass="text-red-500" 
+                            <FilterButton
+                                active={filters.overdue}
+                                onClick={() => toggleFilter('overdue')}
+                                icon={<AlertCircle size={18} />}
+                                colorClass="text-red-500"
                                 title="Vencidos"
                             />
-                            <FilterButton 
-                                active={filters.cancelled} 
-                                onClick={() => toggleFilter('cancelled')} 
-                                icon={<XCircle size={18} />} 
-                                colorClass="text-gray-400" 
+                            <FilterButton
+                                active={filters.cancelled}
+                                onClick={() => toggleFilter('cancelled')}
+                                icon={<XCircle size={18} />}
+                                colorClass="text-gray-400"
                                 title="Cancelados"
                             />
                         </div>
@@ -237,7 +239,7 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                                     />
                                 );
                             })}
-                             {visibleServices.length === 0 && (
+                            {visibleServices.length === 0 && (
                                 <div className="w-full text-center py-4 text-muted-foreground text-xs">
                                     Vacío
                                 </div>
@@ -296,8 +298,8 @@ function FilterButton({ active, onClick, icon, colorClass, title }: { active?: b
             title={title}
             className={cn(
                 "p-1.5 rounded-md transition-all",
-                active 
-                    ? `bg-opacity-15 ${colorClass.replace('text-', 'bg-')} ${colorClass}` 
+                active
+                    ? `bg-opacity-15 ${colorClass.replace('text-', 'bg-')} ${colorClass}`
                     : `${colorClass} hover:bg-accent opacity-70 hover:opacity-100`
             )}
         >
@@ -322,16 +324,16 @@ function ServiceInstanceFeedItem({
     onToggleMenu: (e: React.MouseEvent) => void;
 }) {
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
-    
+
     // Calcular días restantes
     const today = new Date();
     const due = new Date(service.dueDate);
     const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-    
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
     let statusColor = "text-muted-foreground";
     let statusText = `${diffDays} días`;
-    
+
     if (diffDays < 0) {
         statusColor = "text-red-500 font-medium";
         statusText = `Venció hace ${Math.abs(diffDays)} días`;
@@ -358,7 +360,7 @@ function ServiceInstanceFeedItem({
     }
 
     return (
-        <div 
+        <div
             onClick={onClick}
             className={cn(
                 "group relative flex items-center gap-4 p-4 bg-card hover:bg-accent/50 rounded-2xl border shadow-sm transition-all active:scale-[0.99] cursor-pointer",
@@ -366,7 +368,7 @@ function ServiceInstanceFeedItem({
             )}
         >
             {/* Icon */}
-            <div 
+            <div
                 className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner"
                 style={{ backgroundColor: `${service.color}15`, color: service.color }}
             >
@@ -380,11 +382,17 @@ function ServiceInstanceFeedItem({
             {/* Info */}
             <div className="flex-1 min-w-0">
                 <h3 className={cn("font-semibold truncate transition-colors", titleColor)}>{service.name}</h3>
-                <div className="flex items-center gap-2 text-xs mt-0.5">
+                <div className="flex items-center gap-3 text-xs mt-0.5">
                     <span className={cn("flex items-center gap-1", statusColor)}>
                         <Calendar size={12} />
                         {statusText}
                     </span>
+                    {service.forAccounting && (
+                        <span className="flex items-center gap-1 text-blue-400 font-medium" title="Incluido en contabilidad">
+                            <FileText size={12} />
+                            <span className="hidden sm:inline">Contabilidad</span>
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -394,9 +402,9 @@ function ServiceInstanceFeedItem({
                     <DollarSign size={14} className="text-muted-foreground" />
                     {service.amount.toLocaleString()}
                 </span>
-                
+
                 {/* Menu Trigger */}
-                <button 
+                <button
                     onClick={onToggleMenu}
                     className={cn(
                         "p-2 -mr-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors",
@@ -417,19 +425,19 @@ function ServiceInstanceFeedItem({
                             className="absolute bottom-0 right-10 z-50 flex flex-row gap-2 items-center py-1"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
                                 className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
                                 title="Editar"
                             >
-                                <Pencil size={16} /> 
+                                <Pencil size={16} />
                             </button>
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
                                 className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
                                 title="Eliminar"
                             >
-                                <Trash2 size={16} /> 
+                                <Trash2 size={16} />
                             </button>
                         </motion.div>
                     )}
@@ -455,7 +463,7 @@ function ServiceInstanceStoryItem({
     onToggleMenu: (e: React.MouseEvent) => void;
 }) {
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
-    
+
     // Status Border Color
     let ringColor = "ring-primary/30"; // Default
     if (service.status === 'paid') ringColor = "ring-green-500";
@@ -468,15 +476,15 @@ function ServiceInstanceStoryItem({
     else if (service.status === 'cancelled') titleColor = "text-muted-foreground line-through";
 
     return (
-        <div 
+        <div
             onClick={onClick}
             className="snap-center flex flex-col items-center gap-2 min-w-[72px] cursor-pointer group relative"
         >
             <div className={cn(
-                "w-16 h-16 rounded-full p-1 ring-2 ring-offset-2 ring-offset-background transition-all group-active:scale-95",
+                "w-16 h-16 rounded-full p-1 ring-2 ring-offset-2 ring-offset-background transition-all group-active:scale-95 relative",
                 ringColor
             )}>
-                <div 
+                <div
                     className="w-full h-full rounded-full flex items-center justify-center text-2xl bg-card shadow-sm overflow-hidden"
                     style={{ backgroundColor: `${service.color}10` }}
                 >
@@ -486,8 +494,14 @@ function ServiceInstanceStoryItem({
                         service.icon
                     )}
                 </div>
+                {/* Accounting Indicator */}
+                {service.forAccounting && (
+                    <div className="absolute -bottom-1 -left-1 bg-blue-500 text-white rounded-full p-1 border-2 border-background shadow-sm" title="Contabilidad">
+                        <FileText size={10} />
+                    </div>
+                )}
             </div>
-            
+
             {/* Context Menu Trigger (Top Right of Icon) - Always visible on mobile/touch, subtle on desktop */}
             <button
                 onClick={onToggleMenu}
@@ -511,19 +525,19 @@ function ServiceInstanceStoryItem({
                         className="absolute top-6 right-0 -mr-2 z-50 flex flex-col gap-2 pt-2 items-center"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <button 
+                        <button
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
                             className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
                             title="Editar"
                         >
-                            <Pencil size={14} /> 
+                            <Pencil size={14} />
                         </button>
-                        <button 
+                        <button
                             onClick={(e) => { e.stopPropagation(); onDelete(); }}
                             className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
                             title="Eliminar"
                         >
-                            <Trash2 size={14} /> 
+                            <Trash2 size={14} />
                         </button>
                     </motion.div>
                 )}

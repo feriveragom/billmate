@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ServiceInstance, ServiceDefinition, RecurrenceType } from '@/lib/types';
-import { DollarSign, Calendar, CheckCircle, CreditCard, Bell, BellRing, Repeat } from 'lucide-react';
+import { DollarSign, Calendar, CheckCircle, CreditCard, Bell, BellRing, Repeat, FileText } from 'lucide-react';
 
 interface ServiceInstanceFormProps {
     definition?: ServiceDefinition;  // Para heredar color, icon al crear
@@ -16,6 +16,7 @@ export default function ServiceInstanceForm({ definition, initialData, onSave, o
         dueDate: initialData?.dueDate || '',
         status: initialData?.status || 'pending',
         externalPaymentId: initialData?.externalPaymentId || '',
+        forAccounting: initialData?.forAccounting || false,
 
         // Recurrencia
         recurrence: initialData?.recurrence || null,
@@ -130,12 +131,34 @@ export default function ServiceInstanceForm({ definition, initialData, onSave, o
                     <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
                     <input
                         type="text"
-                        value={formData.externalPaymentId}
+                        value={formData.externalPaymentId || ''}
                         onChange={(e) => handleChange('externalPaymentId', e.target.value)}
                         className="w-full pl-10 pr-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
                         placeholder="ID del sistema de pago"
                     />
                 </div>
+            </div>
+
+            {/* Contabilidad */}
+            <div className="flex items-center justify-between p-3 bg-card border border-white/10 rounded-xl">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                        <FileText size={18} />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-foreground">Incluir en Contabilidad</p>
+                        <p className="text-[10px] text-foreground/50">Marcar para reporte de impuestos</p>
+                    </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={formData.forAccounting || false}
+                        onChange={(e) => handleChange('forAccounting', e.target.checked)}
+                        className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
             </div>
 
             {/* --- RECURRENCIA --- */}

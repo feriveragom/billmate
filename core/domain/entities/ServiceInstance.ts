@@ -13,6 +13,9 @@ export interface ServiceInstance {
     // Datos para pago externo (opcional)
     externalPaymentId?: string;
 
+    // Contabilidad
+    forAccounting: boolean;
+
     // Recurrencia (null = pago único)
     recurrence: RecurrenceRule | null;
 

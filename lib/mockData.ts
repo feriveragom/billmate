@@ -13,7 +13,8 @@ export const initialServiceInstances: ServiceInstance[] = [
         color: '#3B82F6',
         recurrence: { type: 'monthly', dayOfMonth: 25 },
         reminderDaysBefore: 3,
-        dailyReminders: 2
+        dailyReminders: 2,
+        forAccounting: false
     },
     {
         id: 'inst-2',
@@ -27,7 +28,8 @@ export const initialServiceInstances: ServiceInstance[] = [
         recurrence: { type: 'monthly', dayOfMonth: 28 },
         reminderDaysBefore: 5,
         dailyReminders: 1,
-        paidAt: '2025-11-27T10:30:00'
+        paidAt: '2025-11-27T10:30:00',
+        forAccounting: true
     },
     {
         id: 'inst-3',
@@ -41,7 +43,8 @@ export const initialServiceInstances: ServiceInstance[] = [
         recurrence: { type: 'monthly', dayOfMonth: 15 },
         reminderDaysBefore: 2,
         dailyReminders: 3,
-        externalPaymentId: 'NF-2025-12'
+        externalPaymentId: 'NF-2025-12',
+        forAccounting: false
     },
     {
         id: 'inst-4',
@@ -54,7 +57,8 @@ export const initialServiceInstances: ServiceInstance[] = [
         color: '#F97316',
         recurrence: { type: 'interval', intervalDays: 45 },
         reminderDaysBefore: 7,
-        dailyReminders: 4
+        dailyReminders: 4,
+        forAccounting: false
     },
     {
         id: 'inst-5',
@@ -67,7 +71,8 @@ export const initialServiceInstances: ServiceInstance[] = [
         color: '#10B981',
         recurrence: { type: 'monthly', dayOfMonth: 10 },
         reminderDaysBefore: 5,
-        dailyReminders: 2
+        dailyReminders: 2,
+        forAccounting: false
     },
 ];
 
