@@ -1,19 +1,40 @@
 import { useState, useEffect } from 'react';
-import { ServiceInstance } from '@/lib/types';
-import { DollarSign, Calendar, CheckCircle } from 'lucide-react';
+import { ServiceInstance, ServiceDefinition, RecurrenceType } from '@/lib/types';
+import { DollarSign, Calendar, CheckCircle, CreditCard, Bell, BellRing, Repeat } from 'lucide-react';
 
 interface ServiceInstanceFormProps {
+    definition?: ServiceDefinition;  // Para heredar color, icon al crear
     initialData?: ServiceInstance | null;
     onSave: (data: Partial<ServiceInstance>) => void;
     onCancel: () => void;
 }
 
-export default function ServiceInstanceForm({ initialData, onSave, onCancel }: ServiceInstanceFormProps) {
+export default function ServiceInstanceForm({ definition, initialData, onSave, onCancel }: ServiceInstanceFormProps) {
     const [formData, setFormData] = useState<Partial<ServiceInstance>>({
-        amount: 0,
-        dueDate: '',
-        status: 'pending'
+        name: initialData?.name || definition?.name || '',
+        amount: initialData?.amount || 0,
+        dueDate: initialData?.dueDate || '',
+        status: initialData?.status || 'pending',
+        externalPaymentId: initialData?.externalPaymentId || '',
+
+        // Recurrencia
+        recurrence: initialData?.recurrence || null,
+
+        // Alertas
+        reminderDaysBefore: initialData?.reminderDaysBefore || 3,
+        dailyReminders: initialData?.dailyReminders || 2,
+
+        // Cache
+        color: initialData?.color || definition?.color || '#8B5CF6',
+        icon: initialData?.icon || definition?.icon || '📝'
     });
+
+    const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(
+        initialData?.recurrence?.type || 'one_time'
+    );
+    const [dayOfWeek, setDayOfWeek] = useState(initialData?.recurrence?.dayOfWeek || 1);
+    const [dayOfMonth, setDayOfMonth] = useState(initialData?.recurrence?.dayOfMonth || 1);
+    const [intervalDays, setIntervalDays] = useState(initialData?.recurrence?.intervalDays || 30);
 
     useEffect(() => {
         if (initialData) {
@@ -27,7 +48,23 @@ export default function ServiceInstanceForm({ initialData, onSave, onCancel }: S
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+
+        // Construir recurrence según el tipo
+        let recurrence = null;
+        if (recurrenceType !== 'one_time') {
+            recurrence = {
+                type: recurrenceType,
+                ...(recurrenceType === 'weekly' && { dayOfWeek }),
+                ...(recurrenceType === 'monthly' && { dayOfMonth }),
+                ...(recurrenceType === 'interval' && { intervalDays })
+            };
+        }
+
+        onSave({
+            ...formData,
+            recurrence,
+            definitionId: initialData?.definitionId || definition?.id || ''
+        });
     };
 
     const statusOptions = [
@@ -36,8 +73,23 @@ export default function ServiceInstanceForm({ initialData, onSave, onCancel }: S
         { value: 'overdue', label: 'Vencido', color: 'bg-red-500/10 border-red-500/30 text-red-600' }
     ];
 
+    const weekDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Nombre */}
+            <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-2">Nombre de la Instancia</label>
+                <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                    className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                    placeholder="ej: Gimnasio Enero - Cuota mensual"
+                    required
+                />
+            </div>
+
             {/* Monto */}
             <div>
                 <label className="block text-xs font-medium text-foreground/70 mb-2">Monto a Pagar</label>
@@ -71,31 +123,140 @@ export default function ServiceInstanceForm({ initialData, onSave, onCancel }: S
                 </div>
             </div>
 
-            {/* Estado */}
+            {/* Código de Pago Externo (opcional) */}
             <div>
-                <label className="block text-xs font-medium text-foreground/70 mb-2">Estado del Pago</label>
-                <div className="grid grid-cols-3 gap-2">
-                    {statusOptions.map(option => (
-                        <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => handleChange('status', option.value)}
-                            className={`p-3 rounded-xl border transition ${
-                                formData.status === option.value
-                                    ? option.color + ' ring-2 ring-primary/50'
-                                    : 'bg-card border-white/10 hover:border-primary/30'
-                            }`}
-                        >
-                            <div className="flex flex-col items-center gap-1">
-                                {formData.status === option.value && (
-                                    <CheckCircle size={16} className="text-primary" />
-                                )}
-                                <span className="text-xs font-medium">{option.label}</span>
-                            </div>
-                        </button>
-                    ))}
+                <label className="block text-xs font-medium text-foreground/70 mb-2">Código de Pago (opcional)</label>
+                <div className="relative">
+                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+                    <input
+                        type="text"
+                        value={formData.externalPaymentId}
+                        onChange={(e) => handleChange('externalPaymentId', e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                        placeholder="ID del sistema de pago"
+                    />
                 </div>
             </div>
+
+            {/* --- RECURRENCIA --- */}
+            <div className="pt-2 border-t border-white/10">
+                <label className="block text-xs font-medium text-foreground/70 mb-2 flex items-center gap-2">
+                    <Repeat size={16} />
+                    Frecuencia
+                </label>
+                <select
+                    value={recurrenceType}
+                    onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}
+                    className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                >
+                    <option value="one_time">Una vez (no se repite)</option>
+                    <option value="weekly">Semanal (mismo día)</option>
+                    <option value="monthly">Mensual (mismo día del mes)</option>
+                    <option value="interval">Cíclico (cada N días)</option>
+                </select>
+            </div>
+
+            {/* Campos condicionales según frecuencia */}
+            {recurrenceType === 'weekly' && (
+                <div>
+                    <label className="block text-xs font-medium text-foreground/70 mb-2">Día de la semana</label>
+                    <select
+                        value={dayOfWeek}
+                        onChange={(e) => setDayOfWeek(parseInt(e.target.value))}
+                        className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                    >
+                        {weekDays.map((day, index) => (
+                            <option key={index} value={index}>{day}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {recurrenceType === 'monthly' && (
+                <div>
+                    <label className="block text-xs font-medium text-foreground/70 mb-2">Día del mes (1-31)</label>
+                    <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={dayOfMonth}
+                        onChange={(e) => setDayOfMonth(parseInt(e.target.value))}
+                        className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                    />
+                </div>
+            )}
+
+            {recurrenceType === 'interval' && (
+                <div>
+                    <label className="block text-xs font-medium text-foreground/70 mb-2">Cada cuántos días</label>
+                    <input
+                        type="number"
+                        min="1"
+                        value={intervalDays}
+                        onChange={(e) => setIntervalDays(parseInt(e.target.value))}
+                        className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                        placeholder="ej: 30 (cada 30 días)"
+                    />
+                </div>
+            )}
+
+            {/* --- ALERTAS --- */}
+            <div className="pt-2 border-t border-white/10">
+                <label className="block text-xs font-medium text-foreground/70 mb-2 flex items-center gap-2">
+                    <Bell size={16} />
+                    Proactividad (días antes para notificar)
+                </label>
+                <input
+                    type="number"
+                    min="0"
+                    max="30"
+                    value={formData.reminderDaysBefore}
+                    onChange={(e) => handleChange('reminderDaysBefore', parseInt(e.target.value))}
+                    className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                />
+            </div>
+
+            <div>
+                <label className="block text-xs font-medium text-foreground/70 mb-2 flex items-center gap-2">
+                    <BellRing size={16} />
+                    Notificaciones por día
+                </label>
+                <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.dailyReminders}
+                    onChange={(e) => handleChange('dailyReminders', parseInt(e.target.value))}
+                    className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                />
+            </div>
+
+            {/* Estado (solo si está editando) */}
+            {initialData && (
+                <div className="pt-2 border-t border-white/10">
+                    <label className="block text-xs font-medium text-foreground/70 mb-2">Estado del Pago</label>
+                    <div className="grid grid-cols-3 gap-2">
+                        {statusOptions.map(option => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => handleChange('status', option.value)}
+                                className={`p-3 rounded-xl border transition ${formData.status === option.value
+                                        ? option.color + ' ring-2 ring-primary/50'
+                                        : 'bg-card border-white/10 hover:border-primary/30'
+                                    }`}
+                            >
+                                <div className="flex flex-col items-center gap-1">
+                                    {formData.status === option.value && (
+                                        <CheckCircle size={16} className="text-primary" />
+                                    )}
+                                    <span className="text-xs font-medium">{option.label}</span>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Botones de Acción */}
             <div className="flex gap-3 pt-2">
@@ -110,10 +271,9 @@ export default function ServiceInstanceForm({ initialData, onSave, onCancel }: S
                     type="submit"
                     className="flex-1 py-3 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold shadow-lg shadow-primary/20 transition"
                 >
-                    {initialData ? 'Guardar Cambios' : 'Crear Pago'}
+                    {initialData ? 'Guardar Cambios' : 'Crear Instancia'}
                 </button>
             </div>
         </form>
     );
 }
-

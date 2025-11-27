@@ -7,44 +7,67 @@ export const initialServiceInstances: ServiceInstance[] = [
         definitionId: 'sys-agua',
         name: 'Agua',
         amount: 45.00,
-        dueDate: '2025-11-25',
+        dueDate: '2025-12-25',
         status: 'pending',
         icon: '/icons/system/agua.png',
         color: '#3B82F6',
-        recurrence: { type: 'monthly', dayOfMonth: 25 }
+        recurrence: { type: 'monthly', dayOfMonth: 25 },
+        reminderDaysBefore: 3,
+        dailyReminders: 2
     },
     {
         id: 'inst-2',
         definitionId: 'sys-electricidad',
         name: 'Electricidad',
         amount: 120.50,
-        dueDate: '2025-11-28',
+        dueDate: '2025-12-28',
         status: 'paid',
         icon: '/icons/system/electricidad.png',
         color: '#FACC15',
-        recurrence: { type: 'monthly', dayOfMonth: 28 }
+        recurrence: { type: 'monthly', dayOfMonth: 28 },
+        reminderDaysBefore: 5,
+        dailyReminders: 1,
+        paidAt: '2025-11-27T10:30:00'
     },
     {
         id: 'inst-3',
         definitionId: 'def-netflix',
-        name: 'Netflix',
+        name: 'Netflix Premium',
         amount: 15.00,
-        dueDate: '2025-11-15',
-        status: 'overdue',
+        dueDate: '2025-12-15',
+        status: 'pending',
         icon: '🎬',
         color: '#E50914',
-        recurrence: { type: 'monthly', dayOfMonth: 15 }
+        recurrence: { type: 'monthly', dayOfMonth: 15 },
+        reminderDaysBefore: 2,
+        dailyReminders: 3,
+        externalPaymentId: 'NF-2025-12'
     },
     {
         id: 'inst-4',
         definitionId: 'sys-gas',
         name: 'Gas',
         amount: 35.00,
-        dueDate: '2025-11-30',
-        status: 'pending',
+        dueDate: '2025-12-05',
+        status: 'overdue',
         icon: '/icons/system/gas.png',
         color: '#F97316',
-        recurrence: { type: 'monthly', dayOfMonth: 30 }
+        recurrence: { type: 'interval', intervalDays: 45 },
+        reminderDaysBefore: 7,
+        dailyReminders: 4
+    },
+    {
+        id: 'inst-5',
+        definitionId: 'def-gimnasio',
+        name: 'Gimnasio Enero - Cuota mensual',
+        amount: 50.00,
+        dueDate: '2025-12-10',
+        status: 'pending',
+        icon: '💪',
+        color: '#10B981',
+        recurrence: { type: 'monthly', dayOfMonth: 10 },
+        reminderDaysBefore: 5,
+        dailyReminders: 2
     },
 ];
 
@@ -57,6 +80,15 @@ export const initialActivities: Activity[] = [
 
 // Datos mock - Definiciones de servicios (Solo Identidad)
 export const initialServiceDefinitions: ServiceDefinition[] = [
+    // Servicio Especial para Pagos Externos/Ayudas
+    {
+        id: 'sys-others',
+        name: 'Otros / Externos',
+        icon: '🌐', // Icono global/genérico
+        color: '#64748B', // Slate-500 (Neutro)
+        category: 'General',
+        isSystemService: true
+    },
     // Servicios del Sistema
     {
         id: 'sys-telefono',

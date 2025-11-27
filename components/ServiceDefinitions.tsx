@@ -1,21 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, LayoutGrid, ArrowRightLeft, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, Pencil, LayoutGrid, ArrowRightLeft, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '@/lib/store';
-import { ServiceDefinition } from '@/lib/types';
+import { ServiceDefinition, ServiceInstance } from '@/lib/types';
 import Modal from './Modal';
 import ServiceDefinitionForm from './ServiceDefinitionForm';
+import ServiceInstanceForm from './ServiceInstanceForm';
 import ConfirmDialog from './ConfirmDialog';
 import HorizontalScroll from './HorizontalScroll';
 
 export default function ServiceDefinitions() {
-    const { serviceDefinitions, addServiceDefinition, updateServiceDefinition, deleteServiceDefinition } = useApp();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isGridView, setIsGridView] = useState(false);
-    const [isHidden, setIsHidden] = useState(false);
+    const { serviceDefinitions, addServiceDefinition, updateServiceDefinition, deleteServiceDefinition, addService } = useApp();
+
+    // Estado para Definiciones (Crear/Editar tipo de servicio)
+    const [isDefModalOpen, setIsDefModalOpen] = useState(false);
     const [editingDefinition, setEditingDefinition] = useState<ServiceDefinition | null>(null);
     const [selectedColor, setSelectedColor] = useState('#8B5CF6');
+
+    // Estado para Instancias (Crear pago)
+    const [isInstanceModalOpen, setIsInstanceModalOpen] = useState(false);
+    const [selectedDefForInstance, setSelectedDefForInstance] = useState<ServiceDefinition | null>(null);
+
+    // Estado de UI
+    const [isGridView, setIsGridView] = useState(false);
+    const [isHidden, setIsHidden] = useState(false);
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; definition: ServiceDefinition | null }>({
         isOpen: false,
         definition: null
@@ -56,16 +65,34 @@ export default function ServiceDefinitions() {
         return newColor;
     };
 
-    const handleAddClick = () => {
+    // --- Handlers para Definiciones ---
+
+    const handleAddDefClick = () => {
         setEditingDefinition(null);
         setSelectedColor(suggestNewColor());
-        setIsModalOpen(true);
+        setIsDefModalOpen(true);
     };
 
-    const handleEditClick = (definition: ServiceDefinition) => {
+    const handleEditDefClick = (definition: ServiceDefinition) => {
         setEditingDefinition(definition);
         setSelectedColor(definition.color);
-        setIsModalOpen(true);
+        setIsDefModalOpen(true);
+    };
+
+    const handleSaveDef = (data: Partial<ServiceDefinition>) => {
+        if (editingDefinition) {
+            updateServiceDefinition(editingDefinition.id, { ...data, color: selectedColor });
+        } else {
+            const newDefinition: ServiceDefinition = {
+                id: `def-${Date.now()}`,
+                name: data.name || 'Nuevo Servicio',
+                icon: data.icon || '📝',
+                category: data.category || 'General',
+                color: selectedColor
+            };
+            addServiceDefinition(newDefinition);
+        }
+        setIsDefModalOpen(false);
     };
 
     const handleDeleteClick = (e: React.MouseEvent, definition: ServiceDefinition) => {
@@ -80,24 +107,35 @@ export default function ServiceDefinitions() {
         setConfirmDialog({ isOpen: false, definition: null });
     };
 
-    const handleCancelDelete = () => {
-        setConfirmDialog({ isOpen: false, definition: null });
+    // --- Handlers para Instancias (Pagos) ---
+
+    const handleCardClick = (definition: ServiceDefinition) => {
+        setSelectedDefForInstance(definition);
+        setIsInstanceModalOpen(true);
     };
 
-    const handleSave = (data: Partial<ServiceDefinition>) => {
-        if (editingDefinition) {
-            updateServiceDefinition(editingDefinition.id, { ...data, color: selectedColor });
-        } else {
-            const newDefinition: ServiceDefinition = {
-                id: `def-${Date.now()}`,
-                name: data.name || 'Nuevo Servicio',
-                icon: data.icon || '📝',
-                category: data.category || 'General',
-                color: selectedColor
+    const handleSaveInstance = (data: Partial<ServiceInstance>) => {
+        if (selectedDefForInstance) {
+            const newInstance: ServiceInstance = {
+                id: `inst-${Date.now()}`,
+                definitionId: selectedDefForInstance.id,
+                name: data.name || selectedDefForInstance.name,
+                amount: data.amount || 0,
+                dueDate: data.dueDate || new Date().toISOString().split('T')[0],
+                status: 'pending', // Siempre nace pendiente
+                recurrence: data.recurrence || null,
+                reminderDaysBefore: data.reminderDaysBefore || 3,
+                dailyReminders: data.dailyReminders || 2,
+                externalPaymentId: data.externalPaymentId,
+
+                // Cache visual
+                icon: selectedDefForInstance.icon,
+                color: selectedDefForInstance.color
             };
-            addServiceDefinition(newDefinition);
+            addService(newInstance);
+            setIsInstanceModalOpen(false);
+            setSelectedDefForInstance(null);
         }
-        setIsModalOpen(false);
     };
 
     const handleViewChange = () => {
@@ -118,7 +156,7 @@ export default function ServiceDefinitions() {
                     >
                         {isGridView ? <ArrowRightLeft size={20} /> : <LayoutGrid size={20} />}
                     </button>
-                    
+
                     {/* Toggle Show/Hide */}
                     <button
                         onClick={() => setIsHidden(!isHidden)}
@@ -132,15 +170,18 @@ export default function ServiceDefinitions() {
 
             {!isHidden && (isGridView ? (
                 /* Grid View */
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto custom-scrollbar p-1">
-                    {/* Botón Nuevo */}
-                    <button
-                        onClick={handleAddClick}
-                        className="flex flex-col items-center justify-center aspect-square rounded-2xl bg-gradient-elixir text-white shadow-lg transform transition hover:scale-105 active:scale-95"
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-3 gap-y-1 p-1">
+                    {/* Botón Nuevo (Estilo Carpeta) */}
+                    <div
+                        onClick={handleAddDefClick}
+                        className="relative group/card mt-2 flex flex-col items-start cursor-pointer transition hover:scale-105 active:scale-95"
                     >
-                        <Plus size={28} />
-                        <span className="text-xs mt-1">Nuevo</span>
-                    </button>
+                        <div className="h-3 w-10 bg-primary rounded-t-lg ml-0 z-20 relative top-[1px]"></div>
+                        <div className="relative z-10 flex flex-col items-center justify-center w-20 h-20 bg-gradient-elixir text-white rounded-b-xl rounded-tr-xl rounded-tl-none shadow-lg">
+                            <Plus size={28} />
+                            <span className="text-xs mt-1 font-medium">Nuevo</span>
+                        </div>
+                    </div>
 
                     {/* Service Definitions */}
                     {serviceDefinitions.map(def => (
@@ -150,8 +191,9 @@ export default function ServiceDefinitions() {
                             icon={def.icon}
                             color={def.color}
                             isSystemService={def.isSystemService}
-                            onClick={() => handleEditClick(def)}
+                            onEdit={() => handleEditDefClick(def)}
                             onDelete={(e) => handleDeleteClick(e, def)}
+                            onClick={() => handleCardClick(def)}
                             className="w-full h-full aspect-square"
                         />
                     ))}
@@ -159,14 +201,17 @@ export default function ServiceDefinitions() {
             ) : (
                 /* Horizontal Scroll View */
                 <HorizontalScroll>
-                    {/* Botón Nuevo */}
-                    <button
-                        onClick={handleAddClick}
-                        className="flex-shrink-0 flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-gradient-elixir text-white shadow-lg transform transition hover:scale-105 active:scale-95"
+                    {/* Botón Nuevo (Estilo Carpeta) */}
+                    <div
+                        onClick={handleAddDefClick}
+                        className="flex-shrink-0 relative group/card mt-2 flex flex-col items-start cursor-pointer transition hover:scale-105 active:scale-95"
                     >
-                        <Plus size={28} />
-                        <span className="text-xs mt-1">Nuevo</span>
-                    </button>
+                        <div className="h-3 w-10 bg-primary rounded-t-lg ml-0 z-20 relative top-[1px]"></div>
+                        <div className="relative z-10 flex flex-col items-center justify-center w-20 h-20 bg-gradient-elixir text-white rounded-b-xl rounded-tr-xl rounded-tl-none shadow-lg">
+                            <Plus size={28} />
+                            <span className="text-xs mt-1 font-medium">Nuevo</span>
+                        </div>
+                    </div>
 
                     {/* Service Definitions */}
                     {serviceDefinitions.map(def => (
@@ -176,16 +221,18 @@ export default function ServiceDefinitions() {
                             icon={def.icon}
                             color={def.color}
                             isSystemService={def.isSystemService}
-                            onClick={() => handleEditClick(def)}
+                            onEdit={() => handleEditDefClick(def)}
                             onDelete={(e) => handleDeleteClick(e, def)}
+                            onClick={() => handleCardClick(def)}
                         />
                     ))}
-                 </HorizontalScroll>
-             ))}
+                </HorizontalScroll>
+            ))}
 
+            {/* Modal para Crear/Editar Definición (Tipo de Servicio) */}
             <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                isOpen={isDefModalOpen}
+                onClose={() => setIsDefModalOpen(false)}
                 title={editingDefinition ? 'Editar Servicio' : 'Nuevo Servicio'}
                 colorPicker={
                     <input
@@ -199,11 +246,26 @@ export default function ServiceDefinitions() {
             >
                 <ServiceDefinitionForm
                     initialData={editingDefinition}
-                    onSave={handleSave}
-                    onCancel={() => setIsModalOpen(false)}
+                    onSave={handleSaveDef}
+                    onCancel={() => setIsDefModalOpen(false)}
                     currentColor={selectedColor}
                     onColorChange={setSelectedColor}
                 />
+            </Modal>
+
+            {/* Modal para Crear Instancia (Pago Real) */}
+            <Modal
+                isOpen={isInstanceModalOpen}
+                onClose={() => setIsInstanceModalOpen(false)}
+                title="Crear Nuevo Pago"
+            >
+                {selectedDefForInstance && (
+                    <ServiceInstanceForm
+                        definition={selectedDefForInstance}
+                        onSave={handleSaveInstance}
+                        onCancel={() => setIsInstanceModalOpen(false)}
+                    />
+                )}
             </Modal>
 
             <ConfirmDialog
@@ -214,19 +276,20 @@ export default function ServiceDefinitions() {
                 confirmText="Eliminar"
                 cancelText="Cancelar"
                 onConfirm={handleConfirmDelete}
-                onCancel={handleCancelDelete}
+                onCancel={() => setConfirmDialog({ isOpen: false, definition: null })}
             />
         </section>
     );
 }
 
-function ServiceDefinitionCard({ name, icon, color, isSystemService, onClick, onDelete, className }: {
+function ServiceDefinitionCard({ name, icon, color, isSystemService, onEdit, onDelete, onClick, className }: {
     name: string;
     icon: string;
     color?: string;
     isSystemService?: boolean;
-    onClick: () => void;
+    onEdit: () => void;
     onDelete: (e: React.MouseEvent) => void;
+    onClick?: () => void;
     className?: string;
 }) {
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
@@ -234,34 +297,63 @@ function ServiceDefinitionCard({ name, icon, color, isSystemService, onClick, on
     return (
         <div
             onClick={onClick}
-            role="button"
-            tabIndex={0}
-            className={`flex-shrink-0 relative group flex flex-col items-center justify-center w-20 h-20 rounded-2xl bg-card border border-primary/20 hover:border-primary/40 transition hover:scale-105 active:scale-95 cursor-pointer ${className || ''}`}
-            style={{ borderLeftColor: color, borderLeftWidth: color ? '3px' : '1px' }}
+            className={`relative group/card mt-2 flex flex-col items-start cursor-pointer transition hover:scale-105 active:scale-95 ${className || ''}`}
             title={name}
         >
-            {/* Botón de eliminar - solo si NO es servicio del sistema */}
-            {!isSystemService && (
-                <button
-                    onClick={onDelete}
-                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    title="Eliminar servicio"
-                >
-                    <Trash2 size={12} />
-                </button>
-            )}
+            {/* Pestaña de la carpeta */}
+            <div
+                className="h-3 w-10 bg-card border-t border-l border-r border-primary/20 rounded-t-lg ml-0 z-20 relative top-[1px]"
+                style={{ backgroundColor: color ? `${color}15` : undefined, borderColor: color ? `${color}40` : undefined }}
+            ></div>
 
-            {/* Icono - puede ser emoji o imagen */}
-            {isImage(icon) ? (
-                <div className="w-10 h-10 flex items-center justify-center overflow-hidden rounded-lg">
-                    <img src={icon} alt={name} className="w-full h-full object-cover" />
+            {/* Cuerpo de la carpeta */}
+            <div
+                className="relative z-10 flex flex-col items-center justify-center w-20 h-20 bg-card border border-primary/20 rounded-b-xl rounded-tr-xl rounded-tl-none shadow-sm"
+                style={{
+                    borderTopColor: color ? `${color}40` : undefined,
+                    borderLeftColor: color ? `${color}40` : undefined,
+                    backgroundColor: color ? `${color}05` : undefined
+                }}
+            >
+                {/* Botones de acción - alineados a la derecha */}
+                <div className="absolute top-1 right-1 flex gap-1 z-20">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit();
+                        }}
+                        className="w-5 h-5 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity shadow-sm"
+                        title="Editar servicio"
+                    >
+                        <Pencil size={12} />
+                    </button>
+
+                    {/* Botón de eliminar - solo si NO es servicio del sistema */}
+                    {!isSystemService && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(e);
+                            }}
+                            className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity shadow-sm"
+                            title="Eliminar servicio"
+                        >
+                            <Trash2 size={12} />
+                        </button>
+                    )}
                 </div>
-            ) : (
-                <div className="text-2xl">{icon}</div>
-            )}
 
-            <span className="text-xs mt-1 text-foreground truncate w-full px-1 text-center">{name}</span>
+                {/* Icono - puede ser emoji o imagen */}
+                {isImage(icon) ? (
+                    <div className="w-9 h-9 flex items-center justify-center overflow-hidden rounded-lg mb-1">
+                        <img src={icon} alt={name} className="w-full h-full object-cover" />
+                    </div>
+                ) : (
+                    <div className="text-2xl mb-1">{icon}</div>
+                )}
+
+                <span className="text-[10px] font-medium text-foreground/80 truncate w-full px-1 text-center leading-tight">{name}</span>
+            </div>
         </div>
     );
 }
-

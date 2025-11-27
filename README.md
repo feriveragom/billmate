@@ -165,6 +165,8 @@ Funcionalidades para la "Magia Social" y automatización avanzada:
 *   **Generación en Cadena:** El sistema crea el pago de Febrero basándose en las reglas del pago de Enero, no de una plantilla maestra.
 *   **Proyección:** Visualización de pagos futuros calculados por el motor de cadena.
 
+------------
+
 ## Del MVP Definido, lo que YA funciona:
 ### ✅ HECHO (Funcional):
 Logo/Icono único ✅
@@ -182,3 +184,54 @@ Historial de notificaciones → 0% (no hay notificaciones)
 Ayuda contextual → 0% (no existe el botón)
 Multilenguaje → 0% (todo hardcodeado en español)
 Grid View toggle → 0% (solo carousel)
+
+```
+hay cosas interesantes en lo que lei de tu investigacion, y hay cosas con las que discrepo, 
+aca mi idea para que la discutamos
+1- sera ServiceInstance
+2- seran creadas por 2 vias
+- desde un servicio das clic y abre formulario de creacion del serviceinstance
+- no es par el mvp, alguien solicita que le ayudes con un servicio y aceptas, pasando a crearse un serviceinstance en tu dashboard, estos estaran en un servicio generico no eliminable que ahora no tiene sentido porque ese canal de creacion no existe aun, solo el formulario
+
+hablemos de un serviceinstance
+name <- nombre que se le pone al serviceidentity
+serviceId <- el id del servicio del que se creo, usualmente el name del servicedefinition
+paymentId <-- este dato es el id para pagar en un sistema externo de pago
+color <- el mismo que el serviceidentity
+
+aca empezamos con lo complicado
+frecuencia <- 1 vez | periodico <- (mismo dia de la semana | mes) | ciclico <-- (cada n dias)
+alarmas <-- las alarmas al dia
+proactividad <-- cuantos dias antes del dia de vencimiento empiezan las notificaciones
+
+-se reutilizara lo que esta ahora mismo en components\ServiceDefinitions.tsx en cuanto  a actions
+-solo programara la siguiente serviceinstance una vez vencida la actual
+-elimiar la serviceinstance actual no vencida detiene la propagacion o creacion de la siguiente
+```
+
+```
+1. Problema: "¿Cuánto necesito este mes?" (Dashboard)
+lo estas pensando demasiado o yo demasiado poco, si el serviceinstance tiene fecha entre el 1 y el ultimo dis del mes, cae en el mes, va al dashboard del mes, se movera entre pendiente, pagado, impago, pero del mes donde este la fecha de ese serviceinstance, del lado derecho estara en el calendario el serviceinstance y tambien tendra un tag que dira si esta en pendiente, pagado, impago, el usuario puede cambiar estas categorias manualmente
+
+2. Problema: Dato "serviceId" ambiguo
+name <- nombre que se le pone al serviceinstance, da igual si coincide o no con el servicedefinition, incluso puede coincidir con el nombre de otro serviceinstance, el name que no debe repetirse es entre los servicedefinition
+esto puede ser
+ServiceDefinition
+ "Gimnasio" (genérico)
+Creo instancia "Gimnasio Enero - Cuota mensual"
+Creo instancia "Gimnasio Enero - Matrícula anual"
+
+3. Lógica de propagación refinada: no crearia nuevas instancias hasta no haber vencido la anterior, mañana creo la instancia siguiente, ahi me preocupa algo para recordar diariamente, asi que en lugar de mañana puede ser al cerrar el dia actual y resuelto
+el mismo dia del evento aun se envian notificaciones
+
+4. Schema de BD final propuesto: <-- estaremos con mock, cuando le demos unas vueltas mas, en varios dias, hablaremos de esto
+```
+
+```
+Hay 3 grandes temas que se van acercando, de los que hablaremos antes de implementarlos
+1- Cuando un serviceinstance se va a vencer, en la noche crear, si es el caso, la nueva instanceservice
+2- Hacer el totalizador mensual con lo que haya dentro del rango del mes
+3- Crear el calendario del mes, donde estaran colocados los serviceinstances de ese mes
+
+Estos puntos llevan mas analisis porque es importante que quede claro el automatismo del pumto 1, la "hoja de calculo" del punto 2 y el almanaque estilo google calendar del punto 3
+```
