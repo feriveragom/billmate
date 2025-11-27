@@ -326,11 +326,13 @@ function ServiceDefinitionGridItem({
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
 
     return (
-        <div className="group flex flex-col items-center gap-2">
+        <div 
+            onClick={onClick}
+            className="group flex flex-col items-center gap-2 cursor-pointer"
+        >
             <div className="relative">
                 <div 
-                    onClick={onClick}
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-border/50 cursor-pointer active:scale-95 transition-transform"
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-border/50 group-active:scale-95 transition-transform"
                     style={{ backgroundColor: `${definition.color}15`, color: definition.color }}
                 >
                     {isImage(definition.icon) ? (
@@ -385,8 +387,7 @@ function ServiceDefinitionGridItem({
             </div>
 
             <span 
-                onClick={onClick}
-                className="text-[10px] font-medium text-foreground/80 text-center w-full truncate px-1 cursor-pointer"
+                className="text-[10px] font-medium text-foreground/80 text-center w-full truncate px-1"
             >
                 {definition.name}
             </span>
@@ -414,7 +415,7 @@ function ServiceDefinitionListItem({
     return (
         <div 
             onClick={onClick}
-            className="group relative flex items-center gap-3 p-3 bg-card hover:bg-accent/50 rounded-xl border border-border/50 shadow-sm transition-all active:scale-[0.99]"
+            className="group relative flex items-center gap-3 p-3 bg-card hover:bg-accent/50 rounded-xl border border-border/50 shadow-sm transition-all active:scale-[0.99] cursor-pointer"
         >
             {/* Icon */}
             <div 

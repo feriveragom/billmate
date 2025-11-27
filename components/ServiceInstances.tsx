@@ -341,7 +341,7 @@ function ServiceInstanceFeedItem({
     return (
         <div 
             onClick={onClick}
-            className="group relative flex items-center gap-4 p-4 bg-card hover:bg-accent/50 rounded-2xl border border-border/50 shadow-sm transition-all active:scale-[0.99]"
+            className="group relative flex items-center gap-4 p-4 bg-card hover:bg-accent/50 rounded-2xl border border-border/50 shadow-sm transition-all active:scale-[0.99] cursor-pointer"
         >
             {/* Icon */}
             <div 
