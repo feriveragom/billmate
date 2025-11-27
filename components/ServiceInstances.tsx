@@ -205,13 +205,20 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                             )}
                         </div>
                     ) : (
-                        /* STORIES VIEW (Horizontal Scroll) */
-                        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 scrollbar-hide">
+                        /* STORIES VIEW (Horizontal Scroll) -> Now Responsive Grid */
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-4 pt-2 pb-4">
                             {visibleServices.map(service => (
                                 <ServiceInstanceStoryItem
                                     key={service.id}
                                     service={service}
                                     onClick={() => handleCardClick(service)}
+                                    onEdit={() => handleEditClick(service)}
+                                    onDelete={() => handleDeleteClick(service)}
+                                    isMenuOpen={activeMenuId === service.id}
+                                    onToggleMenu={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenuId(activeMenuId === service.id ? null : service.id);
+                                    }}
                                 />
                             ))}
                              {visibleServices.length === 0 && (
@@ -346,7 +353,7 @@ function ServiceInstanceFeedItem({
             </div>
 
             {/* Amount & Action */}
-            <div className="flex flex-col items-end gap-1">
+            <div className="relative flex flex-col items-end gap-1">
                 <span className="font-bold text-foreground flex items-center">
                     <DollarSign size={14} className="text-muted-foreground" />
                     {service.amount.toLocaleString()}
@@ -362,46 +369,54 @@ function ServiceInstanceFeedItem({
                 >
                     <MoreVertical size={20} />
                 </button>
-            </div>
 
-            {/* Dropdown Menu */}
-            <AnimatePresence>
-                {isMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        transition={{ duration: 0.1 }}
-                        className="absolute right-4 top-12 z-50 min-w-[150px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden flex flex-col p-1"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors text-left w-full"
+                {/* Dropdown Menu - Vertical Icons Style */}
+                <AnimatePresence>
+                    {isMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.8, y: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-full right-0 -mr-2 mt-1 z-50 flex flex-col gap-2 items-center"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <Pencil size={16} className="text-primary" /> 
-                            <span>Editar</span>
-                        </button>
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors text-left w-full"
-                        >
-                            <Trash2 size={16} /> 
-                            <span>Eliminar</span>
-                        </button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                                className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
+                                title="Editar"
+                            >
+                                <Pencil size={16} /> 
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
+                                title="Eliminar"
+                            >
+                                <Trash2 size={16} /> 
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
         </div>
     );
 }
 
 function ServiceInstanceStoryItem({
     service,
-    onClick
+    onClick,
+    onEdit,
+    onDelete,
+    isMenuOpen,
+    onToggleMenu
 }: {
     service: ServiceInstance;
     onClick: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+    isMenuOpen: boolean;
+    onToggleMenu: (e: React.MouseEvent) => void;
 }) {
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
     
@@ -435,10 +450,46 @@ function ServiceInstanceStoryItem({
                 </div>
             </div>
             
-            {/* Indicador visual de que es clickeable/editable (opcional, pero ayuda) */}
-            <div className="absolute top-0 right-1 w-4 h-4 bg-background rounded-full border border-border flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreVertical size={10} className="text-muted-foreground" />
-            </div>
+            {/* Context Menu Trigger (Top Right of Icon) - Always visible on mobile/touch, subtle on desktop */}
+            <button
+                onClick={onToggleMenu}
+                className={cn(
+                    "absolute top-0 right-0 -mr-2 -mt-2 w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-muted-foreground shadow-sm transition-all z-10",
+                    "opacity-100 sm:opacity-0 sm:group-hover:opacity-100", // Visible siempre en móvil, hover en desktop
+                    isMenuOpen && "opacity-100 ring-2 ring-primary/20" // Siempre visible si está abierto
+                )}
+            >
+                <MoreVertical size={14} />
+            </button>
+
+            {/* Dropdown Menu - Vertical Icons Style */}
+            <AnimatePresence>
+                {isMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-6 right-0 -mr-2 z-50 flex flex-col gap-2 pt-2 items-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
+                            title="Editar"
+                        >
+                            <Pencil size={14} /> 
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
+                            title="Eliminar"
+                        >
+                            <Trash2 size={14} /> 
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <span className="text-[10px] font-medium text-muted-foreground text-center truncate w-full px-1">
                 {service.name}

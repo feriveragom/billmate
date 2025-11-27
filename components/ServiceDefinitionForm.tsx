@@ -175,7 +175,7 @@ export default function ServiceDefinitionForm({ initialData, onSave, onCancel, c
                         {showIconPicker && (
                             <div className="absolute top-full left-0 mt-2 w-80 p-3 bg-card border border-white/10 rounded-2xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-200">
                                 <p className="text-xs font-medium text-foreground/50 mb-2 px-1">Sugerencias</p>
-                                <div className="grid grid-cols-6 gap-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                                <div className="grid grid-cols-6 gap-2 max-h-20 overflow-y-auto custom-scrollbar pr-1">
                                     {emojiList.map((item) => (
                                         <button
                                             key={item.icon}

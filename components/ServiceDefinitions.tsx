@@ -193,7 +193,7 @@ export default function ServiceDefinitions() {
                 <div className="min-h-[100px]">
                     {viewMode === 'grid' ? (
                         /* GRID VIEW (App Drawer Style) */
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-4">
                             {/* Add New Button */}
                             <button
                                 onClick={handleAddDefClick}
@@ -326,13 +326,11 @@ function ServiceDefinitionGridItem({
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
 
     return (
-        <div className="relative group">
-            <div 
-                onClick={onClick}
-                className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform"
-            >
+        <div className="group flex flex-col items-center gap-2">
+            <div className="relative">
                 <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-border/50"
+                    onClick={onClick}
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-border/50 cursor-pointer active:scale-95 transition-transform"
                     style={{ backgroundColor: `${definition.color}15`, color: definition.color }}
                 >
                     {isImage(definition.icon) ? (
@@ -341,53 +339,57 @@ function ServiceDefinitionGridItem({
                         definition.icon
                     )}
                 </div>
-                <span className="text-[10px] font-medium text-foreground/80 text-center w-full truncate px-1">
-                    {definition.name}
-                </span>
+
+                {/* Context Menu Trigger (Top Right of Icon) */}
+                <button
+                    onClick={onToggleMenu}
+                    className={cn(
+                        "absolute -top-2 -right-2 w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-muted-foreground shadow-sm transition-all z-10",
+                        "opacity-100 sm:opacity-0 sm:group-hover:opacity-100", // Visible siempre en móvil, hover en desktop
+                        isMenuOpen && "opacity-100 ring-2 ring-primary/20" // Siempre visible si está abierto
+                    )}
+                >
+                    <MoreVertical size={14} />
+                </button>
+
+                {/* Dropdown Menu - Vertical Icons Style */}
+                <AnimatePresence>
+                    {isMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.8, y: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-6 -right-2 z-50 flex flex-col gap-2 pt-2 items-center"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                                className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
+                                title="Editar"
+                            >
+                                <Pencil size={14} /> 
+                            </button>
+                            {!definition.isSystemService && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                    className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
+                                    title="Eliminar"
+                                >
+                                    <Trash2 size={14} /> 
+                                </button>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
-            {/* Context Menu Trigger (Top Right of Icon) - Always visible on mobile/touch, subtle on desktop */}
-            <button
-                onClick={onToggleMenu}
-                className={cn(
-                    "absolute top-0 right-0 -mr-2 -mt-2 w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-muted-foreground shadow-sm transition-all z-10",
-                    "opacity-100 sm:opacity-0 sm:group-hover:opacity-100", // Visible siempre en móvil, hover en desktop
-                    isMenuOpen && "opacity-100 ring-2 ring-primary/20" // Siempre visible si está abierto
-                )}
+            <span 
+                onClick={onClick}
+                className="text-[10px] font-medium text-foreground/80 text-center w-full truncate px-1 cursor-pointer"
             >
-                <MoreVertical size={14} />
-            </button>
-
-            {/* Dropdown Menu */}
-            <AnimatePresence>
-                {isMenuOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                        transition={{ duration: 0.1 }}
-                        className="absolute right-[-10px] top-6 z-50 min-w-[140px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden flex flex-col p-1"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors text-left w-full"
-                        >
-                            <Pencil size={16} className="text-primary" /> 
-                            <span>Editar</span>
-                        </button>
-                        {!definition.isSystemService && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                                className="flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors text-left w-full"
-                            >
-                                <Trash2 size={16} /> 
-                                <span>Eliminar</span>
-                            </button>
-                        )}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                {definition.name}
+            </span>
         </div>
     );
 }
