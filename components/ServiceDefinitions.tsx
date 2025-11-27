@@ -1,14 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Trash2, Pencil, LayoutGrid, ArrowRightLeft, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+    Plus, 
+    Trash2, 
+    Pencil, 
+    LayoutGrid, 
+    LayoutList, 
+    Eye, 
+    EyeOff, 
+    MoreVertical,
+    Search
+} from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ServiceDefinition, ServiceInstance } from '@/lib/types';
 import Modal from './Modal';
 import ServiceDefinitionForm from './ServiceDefinitionForm';
 import ServiceInstanceForm from './ServiceInstanceForm';
 import ConfirmDialog from './ConfirmDialog';
-import HorizontalScroll from './HorizontalScroll';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ServiceDefinitions() {
     const { serviceDefinitions, addServiceDefinition, updateServiceDefinition, deleteServiceDefinition, addService } = useApp();
@@ -23,12 +34,21 @@ export default function ServiceDefinitions() {
     const [selectedDefForInstance, setSelectedDefForInstance] = useState<ServiceDefinition | null>(null);
 
     // Estado de UI
-    const [isGridView, setIsGridView] = useState(false);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isHidden, setIsHidden] = useState(false);
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+    
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; definition: ServiceDefinition | null }>({
         isOpen: false,
         definition: null
     });
+
+    // Cerrar menú al hacer click fuera
+    useEffect(() => {
+        const handleClickOutside = () => setActiveMenuId(null);
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, []);
 
     // Convertir HSL a HEX
     const hslToHex = (h: number, s: number, l: number): string => {
@@ -71,12 +91,14 @@ export default function ServiceDefinitions() {
         setEditingDefinition(null);
         setSelectedColor(suggestNewColor());
         setIsDefModalOpen(true);
+        setActiveMenuId(null);
     };
 
     const handleEditDefClick = (definition: ServiceDefinition) => {
         setEditingDefinition(definition);
         setSelectedColor(definition.color);
         setIsDefModalOpen(true);
+        setActiveMenuId(null);
     };
 
     const handleSaveDef = (data: Partial<ServiceDefinition>) => {
@@ -95,9 +117,9 @@ export default function ServiceDefinitions() {
         setIsDefModalOpen(false);
     };
 
-    const handleDeleteClick = (e: React.MouseEvent, definition: ServiceDefinition) => {
-        e.stopPropagation();
+    const handleDeleteClick = (definition: ServiceDefinition) => {
         setConfirmDialog({ isOpen: true, definition });
+        setActiveMenuId(null);
     };
 
     const handleConfirmDelete = () => {
@@ -139,97 +161,100 @@ export default function ServiceDefinitions() {
     };
 
     const handleViewChange = () => {
-        setIsGridView(!isGridView);
-        if (isHidden) setIsHidden(false); // Auto-mostrar si está oculto
+        setViewMode(prev => prev === 'grid' ? 'list' : 'grid');
+        if (isHidden) setIsHidden(false);
     };
 
     return (
         <section className="py-4 px-4">
-            <div className="flex items-center justify-between mb-3 px-1">
-                <h2 className="text-sm font-semibold text-foreground/60">MIS SERVICIOS</h2>
+            <div className="flex items-center justify-between mb-4 px-1">
+                <h2 className="text-lg font-bold text-foreground tracking-tight">Mis Servicios</h2>
                 <div className="flex items-center gap-2">
-                    {/* Toggle Horizontal/Grid */}
+                    {/* Toggle View */}
                     <button
                         onClick={handleViewChange}
-                        className="p-1.5 hover:bg-primary/10 rounded-lg transition text-primary/80"
-                        title={isGridView ? "Vista horizontal" : "Vista de cuadrícula"}
+                        className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                        title={viewMode === 'grid' ? "Cambiar a lista" : "Cambiar a cuadrícula"}
                     >
-                        {isGridView ? <ArrowRightLeft size={20} /> : <LayoutGrid size={20} />}
+                        {viewMode === 'grid' ? <LayoutList size={20} /> : <LayoutGrid size={20} />}
                     </button>
 
                     {/* Toggle Show/Hide */}
                     <button
                         onClick={() => setIsHidden(!isHidden)}
-                        className="p-1.5 hover:bg-primary/10 rounded-lg transition text-primary/80"
-                        title={isHidden ? "Mostrar servicios" : "Ocultar servicios"}
+                        className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground"
                     >
                         {isHidden ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                 </div>
             </div>
 
-            {!isHidden && (isGridView ? (
-                /* Grid View */
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-3 gap-y-1 p-1">
-                    {/* Botón Nuevo (Estilo Carpeta) */}
-                    <div
-                        onClick={handleAddDefClick}
-                        className="relative group/card mt-2 flex flex-col items-start cursor-pointer transition hover:scale-105 active:scale-95"
-                    >
-                        <div className="h-3 w-10 bg-primary rounded-t-lg ml-0 z-20 relative top-[1px]"></div>
-                        <div className="relative z-10 flex flex-col items-center justify-center w-20 h-20 bg-gradient-elixir text-white rounded-b-xl rounded-tr-xl rounded-tl-none shadow-lg">
-                            <Plus size={28} />
-                            <span className="text-xs mt-1 font-medium">Nuevo</span>
-                        </div>
-                    </div>
+            {!isHidden && (
+                <div className="min-h-[100px]">
+                    {viewMode === 'grid' ? (
+                        /* GRID VIEW (App Drawer Style) */
+                        <div className="grid grid-cols-4 gap-4">
+                            {/* Add New Button */}
+                            <button
+                                onClick={handleAddDefClick}
+                                className="flex flex-col items-center gap-2 group"
+                            >
+                                <div className="w-14 h-14 rounded-2xl bg-accent/50 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center text-muted-foreground group-hover:border-primary/50 group-hover:text-primary transition-all">
+                                    <Plus size={24} />
+                                </div>
+                                <span className="text-[10px] font-medium text-muted-foreground text-center w-full truncate">
+                                    Nuevo
+                                </span>
+                            </button>
 
-                    {/* Service Definitions */}
-                    {serviceDefinitions.map(def => (
-                        <ServiceDefinitionCard
-                            key={def.id}
-                            name={def.name}
-                            icon={def.icon}
-                            color={def.color}
-                            isSystemService={def.isSystemService}
-                            onEdit={() => handleEditDefClick(def)}
-                            onDelete={(e) => handleDeleteClick(e, def)}
-                            onClick={() => handleCardClick(def)}
-                            className="w-full h-full aspect-square"
-                        />
-                    ))}
+                            {serviceDefinitions.map(def => (
+                                <ServiceDefinitionGridItem
+                                    key={def.id}
+                                    definition={def}
+                                    onClick={() => handleCardClick(def)}
+                                    onEdit={() => handleEditDefClick(def)}
+                                    onDelete={() => handleDeleteClick(def)}
+                                    isMenuOpen={activeMenuId === def.id}
+                                    onToggleMenu={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenuId(activeMenuId === def.id ? null : def.id);
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        /* LIST VIEW (Management Style) */
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={handleAddDefClick}
+                                className="flex items-center gap-3 p-3 w-full bg-accent/20 hover:bg-accent/40 rounded-xl border border-dashed border-muted-foreground/30 text-muted-foreground transition-all mb-2"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-accent/50 flex items-center justify-center">
+                                    <Plus size={20} />
+                                </div>
+                                <span className="font-medium text-sm">Agregar nuevo servicio</span>
+                            </button>
+
+                            {serviceDefinitions.map(def => (
+                                <ServiceDefinitionListItem
+                                    key={def.id}
+                                    definition={def}
+                                    onClick={() => handleCardClick(def)}
+                                    onEdit={() => handleEditDefClick(def)}
+                                    onDelete={() => handleDeleteClick(def)}
+                                    isMenuOpen={activeMenuId === def.id}
+                                    onToggleMenu={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenuId(activeMenuId === def.id ? null : def.id);
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
-            ) : (
-                /* Horizontal Scroll View */
-                <HorizontalScroll>
-                    {/* Botón Nuevo (Estilo Carpeta) */}
-                    <div
-                        onClick={handleAddDefClick}
-                        className="flex-shrink-0 relative group/card mt-2 flex flex-col items-start cursor-pointer transition hover:scale-105 active:scale-95"
-                    >
-                        <div className="h-3 w-10 bg-primary rounded-t-lg ml-0 z-20 relative top-[1px]"></div>
-                        <div className="relative z-10 flex flex-col items-center justify-center w-20 h-20 bg-gradient-elixir text-white rounded-b-xl rounded-tr-xl rounded-tl-none shadow-lg">
-                            <Plus size={28} />
-                            <span className="text-xs mt-1 font-medium">Nuevo</span>
-                        </div>
-                    </div>
+            )}
 
-                    {/* Service Definitions */}
-                    {serviceDefinitions.map(def => (
-                        <ServiceDefinitionCard
-                            key={def.id}
-                            name={def.name}
-                            icon={def.icon}
-                            color={def.color}
-                            isSystemService={def.isSystemService}
-                            onEdit={() => handleEditDefClick(def)}
-                            onDelete={(e) => handleDeleteClick(e, def)}
-                            onClick={() => handleCardClick(def)}
-                        />
-                    ))}
-                </HorizontalScroll>
-            ))}
-
-            {/* Modal para Crear/Editar Definición (Tipo de Servicio) */}
+            {/* Modals */}
             <Modal
                 isOpen={isDefModalOpen}
                 onClose={() => setIsDefModalOpen(false)}
@@ -253,7 +278,6 @@ export default function ServiceDefinitions() {
                 />
             </Modal>
 
-            {/* Modal para Crear Instancia (Pago Real) */}
             <Modal
                 isOpen={isInstanceModalOpen}
                 onClose={() => setIsInstanceModalOpen(false)}
@@ -282,78 +306,175 @@ export default function ServiceDefinitions() {
     );
 }
 
-function ServiceDefinitionCard({ name, icon, color, isSystemService, onEdit, onDelete, onClick, className }: {
-    name: string;
-    icon: string;
-    color?: string;
-    isSystemService?: boolean;
+// --- Subcomponents ---
+
+function ServiceDefinitionGridItem({
+    definition,
+    onClick,
+    onEdit,
+    onDelete,
+    isMenuOpen,
+    onToggleMenu
+}: {
+    definition: ServiceDefinition;
+    onClick: () => void;
     onEdit: () => void;
-    onDelete: (e: React.MouseEvent) => void;
-    onClick?: () => void;
-    className?: string;
+    onDelete: () => void;
+    isMenuOpen: boolean;
+    onToggleMenu: (e: React.MouseEvent) => void;
 }) {
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
 
     return (
-        <div
-            onClick={onClick}
-            className={`relative group/card mt-2 flex flex-col items-start cursor-pointer transition hover:scale-105 active:scale-95 ${className || ''}`}
-            title={name}
-        >
-            {/* Pestaña de la carpeta */}
-            <div
-                className="h-3 w-10 bg-card border-t border-l border-r border-primary/20 rounded-t-lg ml-0 z-20 relative top-[1px]"
-                style={{ backgroundColor: color ? `${color}15` : undefined, borderColor: color ? `${color}40` : undefined }}
-            ></div>
-
-            {/* Cuerpo de la carpeta */}
-            <div
-                className="relative z-10 flex flex-col items-center justify-center w-20 h-20 bg-card border border-primary/20 rounded-b-xl rounded-tr-xl rounded-tl-none shadow-sm"
-                style={{
-                    borderTopColor: color ? `${color}40` : undefined,
-                    borderLeftColor: color ? `${color}40` : undefined,
-                    backgroundColor: color ? `${color}05` : undefined
-                }}
+        <div className="relative group">
+            <div 
+                onClick={onClick}
+                className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform"
             >
-                {/* Botones de acción - alineados a la derecha */}
-                <div className="absolute top-1 right-1 flex gap-1 z-20">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit();
-                        }}
-                        className="w-5 h-5 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity shadow-sm"
-                        title="Editar servicio"
-                    >
-                        <Pencil size={12} />
-                    </button>
-
-                    {/* Botón de eliminar - solo si NO es servicio del sistema */}
-                    {!isSystemService && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete(e);
-                            }}
-                            className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity shadow-sm"
-                            title="Eliminar servicio"
-                        >
-                            <Trash2 size={12} />
-                        </button>
+                <div 
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-border/50"
+                    style={{ backgroundColor: `${definition.color}15`, color: definition.color }}
+                >
+                    {isImage(definition.icon) ? (
+                        <img src={definition.icon} alt="" className="w-8 h-8 object-contain" />
+                    ) : (
+                        definition.icon
                     )}
                 </div>
-
-                {/* Icono - puede ser emoji o imagen */}
-                {isImage(icon) ? (
-                    <div className="w-9 h-9 flex items-center justify-center overflow-hidden rounded-lg mb-1">
-                        <img src={icon} alt={name} className="w-full h-full object-cover" />
-                    </div>
-                ) : (
-                    <div className="text-2xl mb-1">{icon}</div>
-                )}
-
-                <span className="text-[10px] font-medium text-foreground/80 truncate w-full px-1 text-center leading-tight">{name}</span>
+                <span className="text-[10px] font-medium text-foreground/80 text-center w-full truncate px-1">
+                    {definition.name}
+                </span>
             </div>
+
+            {/* Context Menu Trigger (Top Right of Icon) - Always visible on mobile/touch, subtle on desktop */}
+            <button
+                onClick={onToggleMenu}
+                className={cn(
+                    "absolute top-0 right-0 -mr-2 -mt-2 w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-muted-foreground shadow-sm transition-all z-10",
+                    "opacity-100 sm:opacity-0 sm:group-hover:opacity-100", // Visible siempre en móvil, hover en desktop
+                    isMenuOpen && "opacity-100 ring-2 ring-primary/20" // Siempre visible si está abierto
+                )}
+            >
+                <MoreVertical size={14} />
+            </button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+                {isMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute right-[-10px] top-6 z-50 min-w-[140px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden flex flex-col p-1"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors text-left w-full"
+                        >
+                            <Pencil size={16} className="text-primary" /> 
+                            <span>Editar</span>
+                        </button>
+                        {!definition.isSystemService && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors text-left w-full"
+                            >
+                                <Trash2 size={16} /> 
+                                <span>Eliminar</span>
+                            </button>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+function ServiceDefinitionListItem({
+    definition,
+    onClick,
+    onEdit,
+    onDelete,
+    isMenuOpen,
+    onToggleMenu
+}: {
+    definition: ServiceDefinition;
+    onClick: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+    isMenuOpen: boolean;
+    onToggleMenu: (e: React.MouseEvent) => void;
+}) {
+    const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
+
+    return (
+        <div 
+            onClick={onClick}
+            className="group relative flex items-center gap-3 p-3 bg-card hover:bg-accent/50 rounded-xl border border-border/50 shadow-sm transition-all active:scale-[0.99]"
+        >
+            {/* Icon */}
+            <div 
+                className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner"
+                style={{ backgroundColor: `${definition.color}15`, color: definition.color }}
+            >
+                {isImage(definition.icon) ? (
+                    <img src={definition.icon} alt="" className="w-6 h-6 object-contain" />
+                ) : (
+                    definition.icon
+                )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground truncate">{definition.name}</h3>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{definition.category}</span>
+                </div>
+            </div>
+
+            {/* Menu Trigger */}
+            <button 
+                onClick={onToggleMenu}
+                className={cn(
+                    "p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors",
+                    isMenuOpen && "bg-accent text-foreground"
+                )}
+            >
+                <MoreVertical size={20} />
+            </button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+                {isMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, x: 10 }}
+                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, x: 10 }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute right-12 top-2 z-50 min-w-[140px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden flex flex-col p-1"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors text-left w-full"
+                        >
+                            <Pencil size={16} className="text-primary" /> 
+                            <span>Editar</span>
+                        </button>
+                        {!definition.isSystemService && (
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors text-left w-full"
+                            >
+                                <Trash2 size={16} /> 
+                                <span>Eliminar</span>
+                            </button>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

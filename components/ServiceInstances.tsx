@@ -1,14 +1,28 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, LayoutGrid, ArrowRightLeft, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+    LayoutList, 
+    LayoutGrid, 
+    Eye, 
+    EyeOff, 
+    Pencil, 
+    Trash2, 
+    CheckCircle, 
+    AlertCircle, 
+    XCircle, 
+    MoreVertical, 
+    Calendar, 
+    DollarSign 
+} from 'lucide-react';
 import { useApp } from '@/lib/store';
-import { ServiceInstance } from '@/lib/types';
-import HorizontalScroll from './HorizontalScroll';
+import { ServiceInstance, ServiceStatus } from '@/lib/types';
 import Modal from './Modal';
 import ServiceInstanceForm from './ServiceInstanceForm';
 import ServiceInstanceDetails from './ServiceInstanceDetails';
 import ConfirmDialog from './ConfirmDialog';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ServiceInstancesProps {
     showArchived?: boolean;
@@ -16,7 +30,30 @@ interface ServiceInstancesProps {
 
 export default function ServiceInstances({ showArchived = false }: ServiceInstancesProps) {
     const { services, addService, updateService, deleteService } = useApp();
-    const [isGridView, setIsGridView] = useState(false);
+
+    // Filtros locales para la vista de archivados
+    const [filters, setFilters] = useState<{ [key in ServiceStatus]?: boolean }>({
+        paid: true,
+        overdue: true,
+        cancelled: true
+    });
+
+    const toggleFilter = (status: ServiceStatus) => {
+        setFilters(prev => ({ ...prev, [status]: !prev[status] }));
+    };
+
+    // Filtrar servicios según la vista y los filtros activos
+    const visibleServices = services.filter(service => {
+        if (showArchived) {
+            const isArchivedStatus = service.status === 'paid' || service.status === 'overdue' || service.status === 'cancelled';
+            return isArchivedStatus && filters[service.status];
+        }
+        return service.status === 'pending';
+    });
+
+    // View Mode: 'feed' (Vertical List) or 'stories' (Horizontal Scroll)
+    // Default to 'feed' as it carries more info
+    const [viewMode, setViewMode] = useState<'feed' | 'stories'>('feed');
     const [isHidden, setIsHidden] = useState(false);
 
     // Estado para Crear/Editar
@@ -27,36 +64,40 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [selectedInstanceDetails, setSelectedInstanceDetails] = useState<ServiceInstance | null>(null);
 
+    // Estado para Menú de Acciones (Feed View)
+    const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; instance: ServiceInstance | null }>({
         isOpen: false,
         instance: null
     });
 
+    // Cerrar menú al hacer click fuera
+    useEffect(() => {
+        const handleClickOutside = () => setActiveMenuId(null);
+        window.addEventListener('click', handleClickOutside);
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, []);
+
     const handleViewChange = () => {
-        setIsGridView(!isGridView);
+        setViewMode(prev => prev === 'feed' ? 'stories' : 'feed');
         if (isHidden) setIsHidden(false);
     };
 
-    const handleAddClick = () => {
-        setEditingInstance(null);
-        setIsFormModalOpen(true);
-    };
-
-    // Click en el cuerpo de la tarjeta -> Ver Detalles
     const handleCardClick = (instance: ServiceInstance) => {
         setSelectedInstanceDetails(instance);
         setIsDetailsModalOpen(true);
     };
 
-    // Click en botón editar -> Editar
     const handleEditClick = (instance: ServiceInstance) => {
         setEditingInstance(instance);
         setIsFormModalOpen(true);
+        setActiveMenuId(null);
     };
 
-    const handleDeleteClick = (e: React.MouseEvent, instance: ServiceInstance) => {
-        e.stopPropagation();
+    const handleDeleteClick = (instance: ServiceInstance) => {
         setConfirmDialog({ isOpen: true, instance });
+        setActiveMenuId(null);
     };
 
     const handleConfirmDelete = () => {
@@ -88,69 +129,102 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
         setIsFormModalOpen(false);
     };
 
-    const title = showArchived ? 'PAGOS ARCHIVADOS' : 'ALERTAS PROGRAMADAS';
+    const title = showArchived ? 'Historial' : 'Próximos Pagos';
 
     return (
         <section className="py-4 px-4">
-            <div className="flex items-center justify-between mb-3 px-1">
-                <h2 className="text-sm font-semibold text-foreground/60">{title}</h2>
+            <div className="flex items-center justify-between mb-4 px-1">
+                <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
                 <div className="flex items-center gap-2">
-                    {/* Toggle Horizontal/Grid */}
+                    {/* Filtros para Archivados */}
+                    {showArchived && (
+                        <div className="flex items-center gap-1 mr-2 border-r border-border/50 pr-2">
+                            <FilterButton 
+                                active={filters.paid} 
+                                onClick={() => toggleFilter('paid')} 
+                                icon={<CheckCircle size={18} />} 
+                                colorClass="text-green-500" 
+                            />
+                            <FilterButton 
+                                active={filters.overdue} 
+                                onClick={() => toggleFilter('overdue')} 
+                                icon={<AlertCircle size={18} />} 
+                                colorClass="text-red-500" 
+                            />
+                            <FilterButton 
+                                active={filters.cancelled} 
+                                onClick={() => toggleFilter('cancelled')} 
+                                icon={<XCircle size={18} />} 
+                                colorClass="text-gray-400" 
+                            />
+                        </div>
+                    )}
+
+                    {/* Toggle View */}
                     <button
                         onClick={handleViewChange}
-                        className="p-1.5 hover:bg-primary/10 rounded-lg transition text-primary/80"
-                        title={isGridView ? "Vista horizontal" : "Vista de cuadrícula"}
+                        className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground"
+                        title={viewMode === 'feed' ? "Cambiar a vista compacta" : "Cambiar a vista detallada"}
                     >
-                        {isGridView ? <ArrowRightLeft size={20} /> : <LayoutGrid size={20} />}
+                        {viewMode === 'feed' ? <LayoutGrid size={20} /> : <LayoutList size={20} />}
                     </button>
 
                     {/* Toggle Show/Hide */}
                     <button
                         onClick={() => setIsHidden(!isHidden)}
-                        className="p-1.5 hover:bg-primary/10 rounded-lg transition text-primary/80"
-                        title={isHidden ? "Mostrar pagos" : "Ocultar pagos"}
+                        className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground"
                     >
                         {isHidden ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                 </div>
             </div>
 
-            {!isHidden && (isGridView ? (
-                /* Grid View - Cards en cuadrícula (Igual que ServiceDefinitions) */
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-3 gap-y-1 p-1">
-                    {/* NOTA: No mostramos botón "Nuevo" en el grid de instancias según requerimiento */}
-
-                    {services.map(service => (
-                        <ServiceInstanceCard
-                            key={service.id}
-                            name={service.name}
-                            icon={service.icon}
-                            color={service.color}
-                            onClick={() => handleCardClick(service)}
-                            onEdit={() => handleEditClick(service)}
-                            onDelete={(e) => handleDeleteClick(e, service)}
-                            className="w-full h-full aspect-square"
-                        />
-                    ))}
+            {!isHidden && (
+                <div className="min-h-[100px]">
+                    {viewMode === 'feed' ? (
+                        /* FEED VIEW (Vertical List) */
+                        <div className="flex flex-col gap-3 pb-20">
+                            {visibleServices.map(service => (
+                                <ServiceInstanceFeedItem
+                                    key={service.id}
+                                    service={service}
+                                    onClick={() => handleCardClick(service)}
+                                    onEdit={() => handleEditClick(service)}
+                                    onDelete={() => handleDeleteClick(service)}
+                                    isMenuOpen={activeMenuId === service.id}
+                                    onToggleMenu={(e) => {
+                                        e.stopPropagation();
+                                        setActiveMenuId(activeMenuId === service.id ? null : service.id);
+                                    }}
+                                />
+                            ))}
+                            {visibleServices.length === 0 && (
+                                <div className="text-center py-10 text-muted-foreground text-sm">
+                                    No hay pagos pendientes
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        /* STORIES VIEW (Horizontal Scroll) */
+                        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 -mx-4 px-4 scrollbar-hide">
+                            {visibleServices.map(service => (
+                                <ServiceInstanceStoryItem
+                                    key={service.id}
+                                    service={service}
+                                    onClick={() => handleCardClick(service)}
+                                />
+                            ))}
+                             {visibleServices.length === 0 && (
+                                <div className="w-full text-center py-4 text-muted-foreground text-xs">
+                                    Vacío
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
-            ) : (
-                /* Horizontal Scroll View */
-                <HorizontalScroll>
-                    {services.map(service => (
-                        <ServiceInstanceCard
-                            key={service.id}
-                            name={service.name}
-                            icon={service.icon}
-                            color={service.color}
-                            onClick={() => handleCardClick(service)}
-                            onEdit={() => handleEditClick(service)}
-                            onDelete={(e) => handleDeleteClick(e, service)}
-                        />
-                    ))}
-                </HorizontalScroll>
-            ))}
+            )}
 
-            {/* Modal de Formulario (Crear/Editar) */}
+            {/* Modals */}
             <Modal
                 isOpen={isFormModalOpen}
                 onClose={() => setIsFormModalOpen(false)}
@@ -163,11 +237,10 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                 />
             </Modal>
 
-            {/* Modal de Detalles */}
             <Modal
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
-                title="Detalles del Pago"
+                title="Detalles"
             >
                 {selectedInstanceDetails && (
                     <ServiceInstanceDetails
@@ -180,8 +253,8 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
             <ConfirmDialog
                 isOpen={confirmDialog.isOpen}
                 type="warning"
-                title="¿Eliminar pago?"
-                message={`Estás a punto de eliminar el pago "${confirmDialog.instance?.name}".\n\nEsta acción no se puede deshacer.`}
+                title="¿Eliminar?"
+                message={`Se eliminará "${confirmDialog.instance?.name}".`}
                 confirmText="Eliminar"
                 cancelText="Cancelar"
                 onConfirm={handleConfirmDelete}
@@ -191,82 +264,185 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
     );
 }
 
-function ServiceInstanceCard({
-    name,
-    icon,
-    color,
+// --- Subcomponents ---
+
+function FilterButton({ active, onClick, icon, colorClass }: { active?: boolean, onClick: () => void, icon: React.ReactNode, colorClass: string }) {
+    return (
+        <button
+            onClick={onClick}
+            className={cn(
+                "p-1.5 rounded-md transition-all",
+                active ? `bg-opacity-10 ${colorClass.replace('text-', 'bg-')} ${colorClass}` : "text-muted-foreground hover:text-foreground"
+            )}
+        >
+            {icon}
+        </button>
+    );
+}
+
+function ServiceInstanceFeedItem({
+    service,
     onClick,
     onEdit,
     onDelete,
-    className
+    isMenuOpen,
+    onToggleMenu
 }: {
-    name: string;
-    icon: string;
-    color: string;
-    onClick?: () => void;
+    service: ServiceInstance;
+    onClick: () => void;
     onEdit: () => void;
-    onDelete: (e: React.MouseEvent) => void;
-    className?: string;
+    onDelete: () => void;
+    isMenuOpen: boolean;
+    onToggleMenu: (e: React.MouseEvent) => void;
 }) {
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
+    
+    // Calcular días restantes
+    const today = new Date();
+    const due = new Date(service.dueDate);
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    
+    let statusColor = "text-muted-foreground";
+    let statusText = `${diffDays} días`;
+    
+    if (diffDays < 0) {
+        statusColor = "text-red-500 font-medium";
+        statusText = `Venció hace ${Math.abs(diffDays)} días`;
+    } else if (diffDays === 0) {
+        statusColor = "text-orange-500 font-bold";
+        statusText = "Vence hoy";
+    } else if (diffDays <= 3) {
+        statusColor = "text-orange-400";
+        statusText = `Vence en ${diffDays} días`;
+    }
 
     return (
-        <div
+        <div 
             onClick={onClick}
-            role="button"
-            tabIndex={0}
-            className={`flex-shrink-0 relative group/card flex flex-col items-center justify-center w-20 h-24 rounded-lg bg-card border border-primary/10 hover:border-primary/30 transition hover:scale-105 active:scale-95 cursor-pointer shadow-sm ${className || ''}`}
-            style={{
-                borderLeftColor: color,
-                borderLeftWidth: '3px',
-                // Recorte para efecto dog-ear (esquina superior derecha)
-                clipPath: 'polygon(0 0, 70% 0, 100% 20%, 100% 100%, 0 100%)'
-            }}
-            title={name}
+            className="group relative flex items-center gap-4 p-4 bg-card hover:bg-accent/50 rounded-2xl border border-border/50 shadow-sm transition-all active:scale-[0.99]"
         >
-            {/* Triángulo del doblez (dog-ear) */}
-            <div
-                className="absolute top-0 right-0 w-[30%] h-[20%] bg-primary/10 rounded-bl-lg"
-                style={{
-                    background: `linear-gradient(to bottom left, transparent 50%, ${color}20 50%)`
-                }}
-            ></div>
+            {/* Icon */}
+            <div 
+                className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-inner"
+                style={{ backgroundColor: `${service.color}15`, color: service.color }}
+            >
+                {isImage(service.icon) ? (
+                    <img src={service.icon} alt="" className="w-8 h-8 object-contain" />
+                ) : (
+                    service.icon
+                )}
+            </div>
 
-            {/* Botones de acción - alineados a la izquierda */}
-            <div className="absolute top-1 left-1 flex gap-1 z-10 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit();
-                    }}
-                    className="w-5 h-5 bg-primary hover:bg-primary-dark text-white rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition"
-                    title="Editar pago"
-                >
-                    <Pencil size={10} />
-                </button>
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-foreground truncate">{service.name}</h3>
+                <div className="flex items-center gap-2 text-xs mt-0.5">
+                    <span className={cn("flex items-center gap-1", statusColor)}>
+                        <Calendar size={12} />
+                        {statusText}
+                    </span>
+                </div>
+            </div>
 
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(e);
-                    }}
-                    className="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-sm hover:scale-110 transition"
-                    title="Eliminar pago"
+            {/* Amount & Action */}
+            <div className="flex flex-col items-end gap-1">
+                <span className="font-bold text-foreground flex items-center">
+                    <DollarSign size={14} className="text-muted-foreground" />
+                    {service.amount.toLocaleString()}
+                </span>
+                
+                {/* Menu Trigger */}
+                <button 
+                    onClick={onToggleMenu}
+                    className={cn(
+                        "p-2 -mr-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors",
+                        isMenuOpen && "bg-accent text-foreground"
+                    )}
                 >
-                    <Trash2 size={10} />
+                    <MoreVertical size={20} />
                 </button>
             </div>
 
-            {/* Icono - puede ser emoji o imagen */}
-            {isImage(icon) ? (
-                <div className="w-9 h-9 flex items-center justify-center overflow-hidden rounded-lg mb-2 mt-2">
-                    <img src={icon} alt={name} className="w-full h-full object-cover" />
-                </div>
-            ) : (
-                <div className="text-2xl mb-2 mt-2">{icon}</div>
-            )}
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+                {isMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        transition={{ duration: 0.1 }}
+                        className="absolute right-4 top-12 z-50 min-w-[150px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden flex flex-col p-1"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors text-left w-full"
+                        >
+                            <Pencil size={16} className="text-primary" /> 
+                            <span>Editar</span>
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors text-left w-full"
+                        >
+                            <Trash2 size={16} /> 
+                            <span>Eliminar</span>
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
-            <span className="text-[10px] font-medium text-foreground/80 truncate w-full px-1 text-center leading-tight">{name}</span>
+function ServiceInstanceStoryItem({
+    service,
+    onClick
+}: {
+    service: ServiceInstance;
+    onClick: () => void;
+}) {
+    const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
+    
+    // Status Border Color
+    const today = new Date();
+    const due = new Date(service.dueDate);
+    const isOverdue = due < today && due.getDate() !== today.getDate();
+    
+    let ringColor = "ring-primary/30"; // Default
+    if (isOverdue) ringColor = "ring-red-500";
+    else if (service.status === 'paid') ringColor = "ring-green-500";
+
+    return (
+        <div 
+            onClick={onClick}
+            className="snap-center flex flex-col items-center gap-2 min-w-[72px] cursor-pointer group relative"
+        >
+            <div className={cn(
+                "w-16 h-16 rounded-full p-1 ring-2 ring-offset-2 ring-offset-background transition-all group-active:scale-95",
+                ringColor
+            )}>
+                <div 
+                    className="w-full h-full rounded-full flex items-center justify-center text-2xl bg-card shadow-sm overflow-hidden"
+                    style={{ backgroundColor: `${service.color}10` }}
+                >
+                    {isImage(service.icon) ? (
+                        <img src={service.icon} alt="" className="w-8 h-8 object-cover" />
+                    ) : (
+                        service.icon
+                    )}
+                </div>
+            </div>
+            
+            {/* Indicador visual de que es clickeable/editable (opcional, pero ayuda) */}
+            <div className="absolute top-0 right-1 w-4 h-4 bg-background rounded-full border border-border flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreVertical size={10} className="text-muted-foreground" />
+            </div>
+
+            <span className="text-[10px] font-medium text-muted-foreground text-center truncate w-full px-1">
+                {service.name}
+            </span>
         </div>
     );
 }

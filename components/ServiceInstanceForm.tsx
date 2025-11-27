@@ -230,30 +230,55 @@ export default function ServiceInstanceForm({ definition, initialData, onSave, o
                     className="w-full px-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
                 />
             </div>
-
             {/* Estado (solo si está editando) */}
             {initialData && (
                 <div className="pt-2 border-t border-white/10">
                     <label className="block text-xs font-medium text-foreground/70 mb-2">Estado del Pago</label>
-                    <div className="grid grid-cols-3 gap-2">
-                        {statusOptions.map(option => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => handleChange('status', option.value)}
-                                className={`p-3 rounded-xl border transition ${formData.status === option.value
-                                        ? option.color + ' ring-2 ring-primary/50'
-                                        : 'bg-card border-white/10 hover:border-primary/30'
-                                    }`}
-                            >
-                                <div className="flex flex-col items-center gap-1">
-                                    {formData.status === option.value && (
-                                        <CheckCircle size={16} className="text-primary" />
-                                    )}
-                                    <span className="text-xs font-medium">{option.label}</span>
-                                </div>
-                            </button>
-                        ))}
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => handleChange('status', 'pending')}
+                            className={`h-20 rounded-2xl border transition flex flex-col items-center justify-center gap-2 ${formData.status === 'pending'
+                                ? 'bg-card border-primary ring-2 ring-primary/50 text-foreground'
+                                : 'bg-card border-white/10 hover:border-white/30 text-foreground/60'
+                                }`}
+                        >
+                            <span className="text-sm font-medium">Pendiente</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleChange('status', 'paid')}
+                            className={`h-20 rounded-2xl border transition flex flex-col items-center justify-center gap-1 ${formData.status === 'paid'
+                                ? 'bg-green-500/10 border-green-500/50 ring-2 ring-green-500/20 text-green-500'
+                                : 'bg-card border-white/10 hover:border-white/30 text-foreground/60'
+                                }`}
+                        >
+                            {formData.status === 'paid' && <CheckCircle size={20} />}
+                            <span className="text-sm font-medium">Pagado</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleChange('status', 'overdue')}
+                            className={`h-20 rounded-2xl border transition flex flex-col items-center justify-center gap-2 ${formData.status === 'overdue'
+                                ? 'bg-red-500/10 border-red-500/50 ring-2 ring-red-500/20 text-red-500'
+                                : 'bg-card border-white/10 hover:border-white/30 text-foreground/60'
+                                }`}
+                        >
+                            <span className="text-sm font-medium">Vencido</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => handleChange('status', 'cancelled')}
+                            className={`h-20 rounded-2xl border transition flex flex-col items-center justify-center gap-2 ${formData.status === 'cancelled'
+                                ? 'bg-gray-500/10 border-gray-500/50 ring-2 ring-gray-500/20 text-gray-400'
+                                : 'bg-card border-white/10 hover:border-white/30 text-foreground/60'
+                                }`}
+                        >
+                            <span className="text-sm font-medium">Cancelado</span>
+                        </button>
                     </div>
                 </div>
             )}
@@ -277,3 +302,5 @@ export default function ServiceInstanceForm({ definition, initialData, onSave, o
         </form>
     );
 }
+
+

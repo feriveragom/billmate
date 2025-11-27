@@ -37,6 +37,7 @@ export default function HomePage() {
           <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 lg:pb-0">
             <ServiceDefinitions />
             <ServiceInstances />
+            <ServiceInstances showArchived={true} />
             <ActivityFeed showArchived={showArchivedView} />
           </div>
 

@@ -1,11 +1,30 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ServiceInstance, Activity, ServiceDefinition } from './types';
-import { initialServiceInstances, initialActivities, initialServiceDefinitions } from './mockData';
+import { ServiceInstance, Activity, ServiceDefinition } from '../core/domain/entities';
+import {
+    ServiceInstanceUseCases,
+    ServiceDefinitionUseCases,
+    ActivityUseCases
+} from '../core/application/use-cases';
+import {
+    MockServiceInstanceRepository,
+    MockServiceDefinitionRepository,
+    MockActivityRepository
+} from '../core/infrastructure/repositories';
 
 // Re-export types for convenience
-export type { ServiceInstance, Activity, ServiceDefinition, ServiceStatus } from './types';
+export type { ServiceInstance, Activity, ServiceDefinition, ServiceStatus } from '../core/domain/entities';
+
+// Instantiate Dependencies (Dependency Injection Root for the Client)
+// In a real app, this might be done in a separate DI container
+const serviceRepo = new MockServiceInstanceRepository();
+const definitionRepo = new MockServiceDefinitionRepository();
+const activityRepo = new MockActivityRepository();
+
+const serviceUseCases = new ServiceInstanceUseCases(serviceRepo);
+const definitionUseCases = new ServiceDefinitionUseCases(definitionRepo);
+const activityUseCases = new ActivityUseCases(activityRepo);
 
 // Context State
 interface AppState {
@@ -20,14 +39,14 @@ interface AppState {
 
 // Context API
 interface AppContextType extends AppState {
-    addService: (service: ServiceInstance) => void;
-    updateService: (id: string, updates: Partial<ServiceInstance>) => void;
-    deleteService: (id: string) => void;
-    addServiceDefinition: (definition: ServiceDefinition) => void;
-    updateServiceDefinition: (id: string, updates: Partial<ServiceDefinition>) => void;
-    deleteServiceDefinition: (id: string) => void;
-    archiveActivity: (id: string) => void;
-    unarchiveActivity: (id: string) => void;
+    addService: (service: ServiceInstance) => Promise<void>;
+    updateService: (id: string, updates: Partial<ServiceInstance>) => Promise<void>;
+    deleteService: (id: string) => Promise<void>;
+    addServiceDefinition: (definition: ServiceDefinition) => Promise<void>;
+    updateServiceDefinition: (id: string, updates: Partial<ServiceDefinition>) => Promise<void>;
+    deleteServiceDefinition: (id: string) => Promise<void>;
+    archiveActivity: (id: string) => Promise<void>;
+    unarchiveActivity: (id: string) => Promise<void>;
     toggleArchivedView: () => void;
     toggleTheme: () => void;
 }
@@ -35,57 +54,72 @@ interface AppContextType extends AppState {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-    const [services, setServices] = useState<ServiceInstance[]>(initialServiceInstances);
-    const [activities, setActivities] = useState<Activity[]>(initialActivities);
+    // Local State (View Model)
+    const [services, setServices] = useState<ServiceInstance[]>([]);
+    const [activities, setActivities] = useState<Activity[]>([]);
     const [archivedActivities, setArchivedActivities] = useState<Activity[]>([]);
-    const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>(initialServiceDefinitions);
+    const [serviceDefinitions, setServiceDefinitions] = useState<ServiceDefinition[]>([]);
+
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [showArchivedView, setShowArchivedView] = useState(false);
 
-    const addService = (service: ServiceInstance) => {
-        setServices(prev => [...prev, service]);
+    // Load Initial Data
+    useEffect(() => {
+        const loadData = async () => {
+            setServices(await serviceUseCases.getAll());
+            setServiceDefinitions(await definitionUseCases.getAll());
+            setActivities(await activityUseCases.getAll());
+            setArchivedActivities(await activityUseCases.getArchived());
+        };
+        loadData();
+    }, []);
+
+    // Actions (Controllers)
+    const addService = async (service: ServiceInstance) => {
+        await serviceUseCases.add(service);
+        setServices(await serviceUseCases.getAll());
     };
 
-    const updateService = (id: string, updates: Partial<ServiceInstance>) => {
-        setServices(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    const updateService = async (id: string, updates: Partial<ServiceInstance>) => {
+        await serviceUseCases.update(id, updates);
+        setServices(await serviceUseCases.getAll());
     };
 
-    const deleteService = (id: string) => {
-        setServices(prev => prev.filter(s => s.id !== id));
+    const deleteService = async (id: string) => {
+        await serviceUseCases.delete(id);
+        setServices(await serviceUseCases.getAll());
     };
 
-    const addServiceDefinition = (definition: ServiceDefinition) => {
-        setServiceDefinitions(prev => [...prev, definition]);
+    const addServiceDefinition = async (definition: ServiceDefinition) => {
+        await definitionUseCases.add(definition);
+        setServiceDefinitions(await definitionUseCases.getAll());
     };
 
-    const updateServiceDefinition = (id: string, updates: Partial<ServiceDefinition>) => {
-        setServiceDefinitions(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
+    const updateServiceDefinition = async (id: string, updates: Partial<ServiceDefinition>) => {
+        await definitionUseCases.update(id, updates);
+        setServiceDefinitions(await definitionUseCases.getAll());
     };
 
-    const deleteServiceDefinition = (id: string) => {
-        // Prevenir eliminación de servicios del sistema
-        const definition = serviceDefinitions.find(d => d.id === id);
-        if (definition?.isSystemService) {
-            console.warn('No se puede eliminar un servicio del sistema');
-            return;
+    const deleteServiceDefinition = async (id: string) => {
+        try {
+            await definitionUseCases.delete(id);
+            setServiceDefinitions(await definitionUseCases.getAll());
+        } catch (error) {
+            console.error(error);
+            alert(error instanceof Error ? error.message : 'Error deleting definition');
         }
-        setServiceDefinitions(prev => prev.filter(d => d.id !== id));
     };
 
-    const archiveActivity = (id: string) => {
-        const activity = activities.find(a => a.id === id);
-        if (activity) {
-            setActivities(prev => prev.filter(a => a.id !== id));
-            setArchivedActivities(prev => [...prev, activity]);
-        }
+    const archiveActivity = async (id: string) => {
+        await activityUseCases.archive(id);
+        setActivities(await activityUseCases.getAll());
+        setArchivedActivities(await activityUseCases.getArchived());
     };
 
-    const unarchiveActivity = (id: string) => {
-        const activity = archivedActivities.find(a => a.id === id);
-        if (activity) {
-            setArchivedActivities(prev => prev.filter(a => a.id !== id));
-            setActivities(prev => [...prev, activity]);
-        }
+    const unarchiveActivity = async (id: string) => {
+        await activityUseCases.unarchive(id);
+        setActivities(await activityUseCases.getAll());
+        setArchivedActivities(await activityUseCases.getArchived());
     };
 
     const toggleTheme = () => {
@@ -96,7 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setShowArchivedView(prev => !prev);
     };
 
-    // Aplicar clase dark al documento usando useEffect
+    // Side Effects (UI Logic)
     useEffect(() => {
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
