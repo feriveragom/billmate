@@ -29,7 +29,7 @@ interface ServiceInstancesProps {
 }
 
 export default function ServiceInstances({ showArchived = false }: ServiceInstancesProps) {
-    const { services, addService, updateService, deleteService } = useApp();
+    const { services, addService, updateService, deleteService, serviceDefinitions } = useApp();
 
     // Filtros locales para la vista de archivados
     const [filters, setFilters] = useState<{ [key in ServiceStatus]?: boolean }>({
@@ -174,7 +174,7 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                         onClick={() => setIsHidden(!isHidden)}
                         className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground"
                     >
-                        {isHidden ? <EyeOff size={20} /> : <Eye size={20} />}
+                        {isHidden ? <Eye size={20} /> : <EyeOff size={20} />}
                     </button>
                 </div>
             </div>
@@ -184,20 +184,24 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                     {viewMode === 'feed' ? (
                         /* FEED VIEW (Vertical List) */
                         <div className="flex flex-col gap-3 pb-20">
-                            {visibleServices.map(service => (
-                                <ServiceInstanceFeedItem
-                                    key={service.id}
-                                    service={service}
-                                    onClick={() => handleCardClick(service)}
-                                    onEdit={() => handleEditClick(service)}
-                                    onDelete={() => handleDeleteClick(service)}
-                                    isMenuOpen={activeMenuId === service.id}
-                                    onToggleMenu={(e) => {
-                                        e.stopPropagation();
-                                        setActiveMenuId(activeMenuId === service.id ? null : service.id);
-                                    }}
-                                />
-                            ))}
+                            {visibleServices.map(service => {
+                                const def = serviceDefinitions.find(d => d.id === service.definitionId);
+                                const effectiveService = def ? { ...service, color: def.color, icon: def.icon } : service;
+                                return (
+                                    <ServiceInstanceFeedItem
+                                        key={service.id}
+                                        service={effectiveService}
+                                        onClick={() => handleCardClick(service)}
+                                        onEdit={() => handleEditClick(service)}
+                                        onDelete={() => handleDeleteClick(service)}
+                                        isMenuOpen={activeMenuId === service.id}
+                                        onToggleMenu={(e) => {
+                                            e.stopPropagation();
+                                            setActiveMenuId(activeMenuId === service.id ? null : service.id);
+                                        }}
+                                    />
+                                );
+                            })}
                             {visibleServices.length === 0 && (
                                 <div className="text-center py-10 text-muted-foreground text-sm">
                                     No hay pagos pendientes
@@ -207,20 +211,24 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
                     ) : (
                         /* STORIES VIEW (Horizontal Scroll) -> Now Responsive Grid */
                         <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-4 pt-2 pb-4">
-                            {visibleServices.map(service => (
-                                <ServiceInstanceStoryItem
-                                    key={service.id}
-                                    service={service}
-                                    onClick={() => handleCardClick(service)}
-                                    onEdit={() => handleEditClick(service)}
-                                    onDelete={() => handleDeleteClick(service)}
-                                    isMenuOpen={activeMenuId === service.id}
-                                    onToggleMenu={(e) => {
-                                        e.stopPropagation();
-                                        setActiveMenuId(activeMenuId === service.id ? null : service.id);
-                                    }}
-                                />
-                            ))}
+                            {visibleServices.map(service => {
+                                const def = serviceDefinitions.find(d => d.id === service.definitionId);
+                                const effectiveService = def ? { ...service, color: def.color, icon: def.icon } : service;
+                                return (
+                                    <ServiceInstanceStoryItem
+                                        key={service.id}
+                                        service={effectiveService}
+                                        onClick={() => handleCardClick(service)}
+                                        onEdit={() => handleEditClick(service)}
+                                        onDelete={() => handleDeleteClick(service)}
+                                        isMenuOpen={activeMenuId === service.id}
+                                        onToggleMenu={(e) => {
+                                            e.stopPropagation();
+                                            setActiveMenuId(activeMenuId === service.id ? null : service.id);
+                                        }}
+                                    />
+                                );
+                            })}
                              {visibleServices.length === 0 && (
                                 <div className="w-full text-center py-4 text-muted-foreground text-xs">
                                     Vacío
@@ -324,6 +332,12 @@ function ServiceInstanceFeedItem({
         statusText = `Vence en ${diffDays} días`;
     }
 
+    // Color del título según estado (para Historial)
+    let titleColor = "text-foreground";
+    if (service.status === 'paid') titleColor = "text-green-600";
+    else if (service.status === 'overdue') titleColor = "text-red-500";
+    else if (service.status === 'cancelled') titleColor = "text-muted-foreground line-through";
+
     return (
         <div 
             onClick={onClick}
@@ -343,7 +357,7 @@ function ServiceInstanceFeedItem({
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-foreground truncate">{service.name}</h3>
+                <h3 className={cn("font-semibold truncate transition-colors", titleColor)}>{service.name}</h3>
                 <div className="flex items-center gap-2 text-xs mt-0.5">
                     <span className={cn("flex items-center gap-1", statusColor)}>
                         <Calendar size={12} />
@@ -370,15 +384,15 @@ function ServiceInstanceFeedItem({
                     <MoreVertical size={20} />
                 </button>
 
-                {/* Dropdown Menu - Vertical Icons Style */}
+                {/* Dropdown Menu - Horizontal Icons Style (Left expansion) */}
                 <AnimatePresence>
                     {isMenuOpen && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.8, y: -10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.8, y: -10 }}
+                            initial={{ opacity: 0, x: 10, scale: 0.8 }}
+                            animate={{ opacity: 1, x: 0, scale: 1 }}
+                            exit={{ opacity: 0, x: 10, scale: 0.8 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute top-full right-0 -mr-2 mt-1 z-50 flex flex-col gap-2 items-center"
+                            className="absolute bottom-0 right-10 z-50 flex flex-row gap-2 items-center py-1"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <button 

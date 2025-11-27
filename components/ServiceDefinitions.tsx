@@ -184,7 +184,7 @@ export default function ServiceDefinitions() {
                         onClick={() => setIsHidden(!isHidden)}
                         className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-foreground"
                     >
-                        {isHidden ? <EyeOff size={20} /> : <Eye size={20} />}
+                        {isHidden ? <Eye size={20} /> : <EyeOff size={20} />}
                     </button>
                 </div>
             </div>
@@ -447,31 +447,31 @@ function ServiceDefinitionListItem({
                 <MoreVertical size={20} />
             </button>
 
-            {/* Dropdown Menu */}
+            {/* Dropdown Menu - Horizontal Icons Style (Left expansion) */}
             <AnimatePresence>
                 {isMenuOpen && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, x: 10 }}
-                        animate={{ opacity: 1, scale: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, x: 10 }}
-                        transition={{ duration: 0.1 }}
-                        className="absolute right-12 top-2 z-50 min-w-[140px] bg-popover border border-border rounded-xl shadow-xl overflow-hidden flex flex-col p-1"
+                        initial={{ opacity: 0, x: 10, scale: 0.8 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: 10, scale: 0.8 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-14 z-50 flex flex-row gap-2 items-center"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button 
                             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground hover:bg-accent rounded-lg transition-colors text-left w-full"
+                            className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
+                            title="Editar"
                         >
-                            <Pencil size={16} className="text-primary" /> 
-                            <span>Editar</span>
+                            <Pencil size={16} /> 
                         </button>
                         {!definition.isSystemService && (
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                                className="flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors text-left w-full"
+                                className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
+                                title="Eliminar"
                             >
                                 <Trash2 size={16} /> 
-                                <span>Eliminar</span>
                             </button>
                         )}
                     </motion.div>
