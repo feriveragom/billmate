@@ -1,0 +1,19 @@
+import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
+import PermissionsTable from '@/components/features/admin/PermissionsTable';
+
+export default function PermissionsPage() {
+    return (
+        <ProtectedRoute requiredPermission="admin.roles.manage">
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2">Permisos del Sistema</h1>
+                    <p className="text-foreground/60">
+                        Define las capacidades atómicas que pueden ser asignadas a los roles.
+                    </p>
+                </div>
+
+                <PermissionsTable />
+            </div>
+        </ProtectedRoute>
+    );
+}

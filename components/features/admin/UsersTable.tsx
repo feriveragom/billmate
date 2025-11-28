@@ -18,7 +18,7 @@ export default function UsersTable() {
     const [newRole, setNewRole] = useState<string>('');
     const [isSavingRole, setIsSavingRole] = useState(false);
 
-    const supabase = createClient();
+    const [supabase] = useState(() => createClient());
 
     const fetchUsers = async () => {
         setIsLoading(true);
@@ -27,9 +27,11 @@ export default function UsersTable() {
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (data) setUsers(data);
+        if (data) {
+            setUsers(data);
+        }
         if (error) {
-            console.error('Error fetching users:', error);
+            console.error('❌ [UsersTable] Error fetching users:', error);
             toast.error('Error cargando usuarios. ¿Ejecutaste la migración?');
         }
         setIsLoading(false);
@@ -56,8 +58,6 @@ export default function UsersTable() {
 
             setUsers(users.map(u => u.id === user.id ? { ...u, is_active: newStatus } : u));
             toast.success(`Usuario ${action}do exitosamente`, { id: toastId });
-
-            // Log de auditoría (opcional, si tienes el RPC configurado para esto)
         } catch (err) {
             console.error(err);
             toast.error(`Error al ${action} usuario`, { id: toastId });
@@ -110,8 +110,8 @@ export default function UsersTable() {
     return (
         <div className="space-y-6 relative">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Gestión de Usuarios</h2>
-                <div className="w-80">
+                <h2 className="text-2xl font-bold text-foreground">Gestión de Usuarios</h2> {/* Asegurar color visible */}
+                <div className="w-80 text-foreground"> {/* Asegurar color visible en inputs */}
                     <SelectInput
                         value={searchFilter}
                         onChange={setSearchFilter}
@@ -123,29 +123,29 @@ export default function UsersTable() {
                 </div>
             </div>
 
-            <div className="bg-card border border-white/10 rounded-2xl overflow-visible"> {/* Overflow visible para el menú */}
+            <div className="bg-card border border-white/10 rounded-2xl overflow-visible shadow-sm">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-white/5 text-foreground/60 font-medium">
-                        <tr>
-                            <th className="p-4">Usuario</th>
-                            <th className="p-4">Estado</th>
-                            <th className="p-4">Rol</th>
-                            <th className="p-4">Registro</th>
-                            <th className="p-4 text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 relative">
+                    <thead className="bg-muted/50 text-foreground/70 font-medium"><tr>
+                        <th className="p-4">Usuario</th>
+                        <th className="p-4">Estado</th>
+                        <th className="p-4">Rol</th>
+                        <th className="p-4">Registro</th>
+                        <th className="p-4 text-right">Acciones</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-white/10 relative">
                         {isLoading ? (
                             <tr><td colSpan={5} className="p-8 text-center text-foreground/50">Cargando usuarios...</td></tr>
+                        ) : filteredUsers.length === 0 ? (
+                            <tr><td colSpan={5} className="p-8 text-center text-foreground/50">No se encontraron usuarios.</td></tr>
                         ) : filteredUsers.map(user => (
-                            <tr key={user.id} className={`hover:bg-white/5 transition relative ${!user.is_active ? 'opacity-60 bg-red-500/5' : ''} ${activeMenuId === user.id ? 'z-50' : 'z-0'}`}>
+                            <tr key={user.id} className={`hover:bg-muted/20 transition relative text-foreground ${!user.is_active ? 'opacity-60 bg-red-500/5' : ''} ${activeMenuId === user.id ? 'z-50' : 'z-0'}`}>
                                 <td className="p-4">
                                     <div className="flex items-center gap-3">
                                         {user.avatar_url ? (
                                             <img
                                                 src={user.avatar_url}
                                                 alt={user.full_name}
-                                                className="w-8 h-8 rounded-full bg-white/10 object-cover"
+                                                className="w-8 h-8 rounded-full bg-muted object-cover"
                                                 referrerPolicy="no-referrer"
                                             />
                                         ) : (
@@ -154,16 +154,15 @@ export default function UsersTable() {
                                             </div>
                                         )}
                                         <div>
-                                            <p className="font-medium text-foreground flex items-center gap-2">
+                                            <p className="font-medium flex items-center gap-2">
                                                 {user.full_name || 'Sin Nombre'}
                                                 {user.is_active === false && <span className="text-[10px] bg-red-500 text-white px-1.5 rounded">SUSPENDIDO</span>}
                                             </p>
-                                            <p className="text-xs text-foreground/50">{user.email}</p>
+                                            <p className="text-xs text-muted-foreground">{user.email}</p>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="p-4">
-                                    {/* Fallback safe check for is_active explicitly checking undefined for backward compatibility before migration */}
                                     {user.is_active !== false ? (
                                         <div className="flex items-center gap-1.5 text-green-500 text-xs font-medium">
                                             <CheckCircle size={14} /> Activo
@@ -177,12 +176,12 @@ export default function UsersTable() {
                                 <td className="p-4">
                                     <span className={`px-2 py-1 rounded-md text-xs font-bold ${user.role === 'SUPER_ADMIN' ? 'bg-purple-500/20 text-purple-400' :
                                         user.role === 'ADMIN' ? 'bg-blue-500/20 text-blue-400' :
-                                            'bg-white/10 text-foreground/70'
+                                            'bg-muted text-foreground/70'
                                         }`}>
                                         {user.role}
                                     </span>
                                 </td>
-                                <td className="p-4 text-foreground/50">
+                                <td className="p-4 text-muted-foreground">
                                     {new Date(user.created_at).toLocaleDateString()}
                                 </td>
                                 <td className="p-4 text-right relative">
@@ -206,14 +205,14 @@ export default function UsersTable() {
             {/* Modal de Edición de Rol */}
             {editingUser && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-card border border-primary/20 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
+                    <div className="bg-card border border-primary/20 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 text-foreground">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-3 rounded-full bg-primary/10 text-primary">
                                 <UserCog size={24} />
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold text-foreground">Editar Rol</h3>
-                                <p className="text-sm text-foreground/60">Modificando permisos para {editingUser.full_name}</p>
+                                <h3 className="text-xl font-bold">Editar Rol</h3>
+                                <p className="text-sm text-muted-foreground">Modificando permisos para {editingUser.full_name}</p>
                             </div>
                         </div>
 
@@ -231,12 +230,6 @@ export default function UsersTable() {
                                         <option value="ADMIN">ADMIN (Gestión)</option>
                                         <option value="SUPER_ADMIN">SUPER_ADMIN (Total)</option>
                                     </select>
-                                    {/* Chevron personalizado para asegurar visibilidad */}
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-foreground/50">
-                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                    </div>
                                 </div>
                             </div>
 

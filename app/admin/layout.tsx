@@ -1,16 +1,19 @@
 'use client';
 
 import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
-import { Users, Shield, FileText, ShieldAlert } from 'lucide-react';
+import { Users, Shield, FileText, ShieldAlert, Key } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import TopHeader from '@/components/layout/TopHeader';
+import { useAuth } from '@/components/features/auth/AuthProvider';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const { checkPermission } = useAuth();
 
     return (
-        <ProtectedRoute requiredRole="SUPER_ADMIN">
+        // 1. Protección de Nivel Superior: Acceso al Panel Admin
+        <ProtectedRoute requiredPermission="admin.access">
             <div className="min-h-screen bg-background flex flex-col">
                 {/* Header Global en Admin */}
                 <TopHeader />
@@ -29,24 +32,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
 
                         <nav className="space-y-1 flex-1">
-                            <AdminLink
-                                href="/admin/users"
-                                active={pathname === '/admin/users'}
-                                icon={<Users size={20} />}
-                                label="Usuarios"
-                            />
-                            <AdminLink
-                                href="/admin/roles"
-                                active={pathname === '/admin/roles'}
-                                icon={<Shield size={20} />}
-                                label="Roles y Permisos"
-                            />
-                            <AdminLink
-                                href="/admin/logs"
-                                active={pathname === '/admin/logs'}
-                                icon={<FileText size={20} />}
-                                label="Logs de Auditoría"
-                            />
+                            {/* 2. Renderizado Condicional de Links por Permiso */}
+                            
+                            {checkPermission('admin.users.manage') && (
+                                <AdminLink
+                                    href="/admin/users"
+                                    active={pathname === '/admin/users'}
+                                    icon={<Users size={20} />}
+                                    label="Usuarios"
+                                />
+                            )}
+
+                            {checkPermission('admin.roles.manage') && (
+                                <AdminLink
+                                    href="/admin/permissions"
+                                    active={pathname === '/admin/permissions'}
+                                    icon={<Key size={20} />}
+                                    label="Gestión de Permisos"
+                                />
+                            )}
+
+                            {checkPermission('admin.roles.manage') && (
+                                <AdminLink
+                                    href="/admin/roles"
+                                    active={pathname === '/admin/roles'}
+                                    icon={<Shield size={20} />}
+                                    label="Roles y Permisos"
+                                />
+                            )}
+
+                            {checkPermission('admin.logs.view') && (
+                                <AdminLink
+                                    href="/admin/logs"
+                                    active={pathname === '/admin/logs'}
+                                    icon={<FileText size={20} />}
+                                    label="Logs de Auditoría"
+                                />
+                            )}
                         </nav>
                     </aside>
 

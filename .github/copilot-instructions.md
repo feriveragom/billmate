@@ -35,12 +35,20 @@ Adoptamos una **Arquitectura Híbrida (Feature-based + Layered)** para equilibra
     *   **Store/Hooks:** Manejan el estado, la lógica de negocio y la comunicación con el backend/servicios.
 *   **Single Responsibility Principle (SRP):** Cada componente o función debe hacer una sola cosa bien. Si un componente crece demasiado, refactorizar en sub-componentes.
 
-### 2.2 Estilizado y UX
+### 2.2 Seguridad y Control de Acceso (NUEVO - Permission-Driven)
+*   **Modelo RBAC Estricto:** El sistema utiliza un modelo de **Control de Acceso Basado en Permisos**.
+*   **Regla de Oro:** NUNCA proteger rutas o componentes preguntando por el "Rol" del usuario (ej: `if role == 'ADMIN'`). SIEMPRE preguntar por la "Capacidad" (ej: `if checkPermission('users.delete')`).
+*   **Roles:** Son meros contenedores de permisos. Los roles pueden ser dinámicos, pero los permisos son las llaves atómicas del sistema.
+*   **Implementación:**
+    *   Usar `<ProtectedRoute requiredPermission="scope.action" />` para páginas enteras.
+    *   Usar `const { checkPermission } = useAuth()` para renderizado condicional de botones o secciones.
+
+### 2.3 Estilizado y UX
 *   **Mobile-First Estricto:** Diseñar siempre pensando primero en pantallas pequeñas (320px). Usar clases `md:`, `lg:` para escalar a desktop.
 *   **Tailwind CSS:** Herramienta principal de estilos. Evitar CSS inline o archivos `.css` separados salvo para configuraciones globales.
 *   **Estética Premium:** Mantener el lenguaje visual de "Glassmorphism", gradientes sutiles y micro-interacciones.
 
-### 2.3 TypeScript
+### 2.4 TypeScript
 *   **Tipado Fuerte:** No usar `any`. Definir interfaces claras en `lib/types.ts` para modelos de datos (ej: `ServiceInstance`, `ServiceDefinition`).
 *   **Interfaces Explícitas:** Props de componentes deben estar tipadas.
 
@@ -50,3 +58,4 @@ Adoptamos una **Arquitectura Híbrida (Feature-based + Layered)** para equilibra
 3.  **Importaciones:** Usar siempre alias absolutos (`@/components/...`) en lugar de rutas relativas largas (`../../../`).
 4.  **Refactorización Proactiva:** Si detectas código duplicado o componentes gigantes, sugiere dividirlo siguiendo estos patrones.
 5.  **Verificación de Entorno:** Antes de pedir credenciales o configuración, verifica si existen archivos como `.env.local` o `tailwind.config.ts`. Asume que la configuración existe si el archivo está presente.
+6.  **Seguridad por Permisos:** Al generar nuevas vistas o acciones sensibles, SIEMPRE sugerir el permiso asociado y cómo protegerlo usando `checkPermission`.

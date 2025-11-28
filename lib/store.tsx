@@ -3,29 +3,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ServiceInstance, Activity, ServiceDefinition } from '../core/domain/entities';
 import { useAuth } from '../components/features/auth/AuthProvider';
-import {
-    ServiceInstanceUseCases,
-    ServiceDefinitionUseCases,
-    ActivityUseCases
-} from '../core/application/use-cases';
-import {
-    MockServiceInstanceRepository,
-    MockServiceDefinitionRepository,
-    MockActivityRepository
-} from '../core/infrastructure/repositories';
 
 // Re-export types for convenience
 export type { ServiceInstance, Activity, ServiceDefinition, ServiceStatus } from '../core/domain/entities';
-
-// Instantiate Dependencies (Dependency Injection Root for the Client)
-// In a real app, this might be done in a separate DI container
-const serviceRepo = new MockServiceInstanceRepository();
-const definitionRepo = new MockServiceDefinitionRepository();
-const activityRepo = new MockActivityRepository();
-
-const serviceUseCases = new ServiceInstanceUseCases(serviceRepo);
-const definitionUseCases = new ServiceDefinitionUseCases(definitionRepo);
-const activityUseCases = new ActivityUseCases(activityRepo);
 
 // Context State
 interface AppState {
@@ -66,91 +46,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [showArchivedView, setShowArchivedView] = useState(false);
 
-    // Load Initial Data
+    // Load Initial Data - TODO: Connect to Real Supabase Repositories
     useEffect(() => {
         const loadData = async () => {
-            if (!user) return; // Wait for user
-
-            // In a real app, repositories would filter by userId automatically via RLS or query
-            // Here we simulate it by filtering the mock data
-            const allServices = await serviceUseCases.getAll();
-            setServices(allServices.filter(s => s.userId === user.id));
-
-            const allDefinitions = await definitionUseCases.getAll();
-            setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
-
-            setActivities(await activityUseCases.getAll());
-            setArchivedActivities(await activityUseCases.getArchived());
+            if (!user) return; 
+            console.log("Store: Loading data placeholder");
+            // TODO: Implement fetching from real repositories
         };
         loadData();
     }, [user]);
 
-    // Actions (Controllers)
+    // Actions (Controllers) - TODO: Connect to Real Supabase Repositories
     const addService = async (service: ServiceInstance) => {
-        if (!user) return;
-        const serviceWithUser = { ...service, userId: user.id };
-        await serviceUseCases.add(serviceWithUser);
-
-        // Refresh
-        const allServices = await serviceUseCases.getAll();
-        setServices(allServices.filter(s => s.userId === user.id));
+        console.log("Store: Add service placeholder", service);
     };
 
     const updateService = async (id: string, updates: Partial<ServiceInstance>) => {
-        if (!user) return;
-        await serviceUseCases.update(id, updates);
-
-        const allServices = await serviceUseCases.getAll();
-        setServices(allServices.filter(s => s.userId === user.id));
+        console.log("Store: Update service placeholder", id, updates);
     };
 
     const deleteService = async (id: string) => {
-        if (!user) return;
-        await serviceUseCases.delete(id);
-
-        const allServices = await serviceUseCases.getAll();
-        setServices(allServices.filter(s => s.userId === user.id));
+        console.log("Store: Delete service placeholder", id);
     };
 
     const addServiceDefinition = async (definition: ServiceDefinition) => {
-        if (!user) return;
-        const defWithUser = { ...definition, userId: user.id };
-        await definitionUseCases.add(defWithUser);
-
-        const allDefinitions = await definitionUseCases.getAll();
-        setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
+        console.log("Store: Add definition placeholder", definition);
     };
 
     const updateServiceDefinition = async (id: string, updates: Partial<ServiceDefinition>) => {
-        if (!user) return;
-        await definitionUseCases.update(id, updates);
-
-        const allDefinitions = await definitionUseCases.getAll();
-        setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
+        console.log("Store: Update definition placeholder", id, updates);
     };
 
     const deleteServiceDefinition = async (id: string) => {
-        if (!user) return;
-        try {
-            await definitionUseCases.delete(id);
-            const allDefinitions = await definitionUseCases.getAll();
-            setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
-        } catch (error) {
-            console.error(error);
-            alert(error instanceof Error ? error.message : 'Error deleting definition');
-        }
+        console.log("Store: Delete definition placeholder", id);
     };
 
     const archiveActivity = async (id: string) => {
-        await activityUseCases.archive(id);
-        setActivities(await activityUseCases.getAll());
-        setArchivedActivities(await activityUseCases.getArchived());
+        console.log("Store: Archive activity placeholder", id);
     };
 
     const unarchiveActivity = async (id: string) => {
-        await activityUseCases.unarchive(id);
-        setActivities(await activityUseCases.getAll());
-        setArchivedActivities(await activityUseCases.getArchived());
+        console.log("Store: Unarchive activity placeholder", id);
     };
 
     const toggleTheme = () => {

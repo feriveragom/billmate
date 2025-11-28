@@ -9,8 +9,9 @@ export interface User {
     email: string;
     name: string;
     avatar_url?: string;
-    role: 'GUEST' | 'FREE_USER' | 'PREMIUM_USER' | 'ADMIN' | 'SUPER_ADMIN';
-    is_active?: boolean; // Nueva propiedad opcional
+    role: 'FREE_USER' | 'PREMIUM_USER' | 'ADMIN' | 'SUPER_ADMIN' | string;
+    is_active?: boolean;
+    permissions?: string[];
 }
 
 interface AuthContextType {
@@ -18,6 +19,8 @@ interface AuthContextType {
     isLoading: boolean;
     signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
+    checkPermission: (permissionCode: string) => boolean;
+    refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const fetchProfileDirectly = async (userId: string) => {
+    const fetchProfileWithPermissions = async (userId: string) => {
+        // 1. Fetch Profile (Rol)
         const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`;
         const response = await fetch(url, {
             headers: {
@@ -54,9 +58,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         });
         
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        if (!response.ok) {
+            console.error("❌ [AuthProvider] Error fetching profile:", response.status);
+            throw new Error(`HTTP error ${response.status}`);
+        }
         const data = await response.json();
-        return data?.[0];
+        const profile = data?.[0];
+
+        if (!profile) return null;
+        
+        // 2. Fetch Permissions based on Role
+        const { data: roleData, error } = await supabase
+            .from('roles')
+            .select(`
+                id,
+                name,
+                role_permissions (
+                    permissions (
+                        code
+                    )
+                )
+            `)
+            .eq('name', profile.role)
+            .single();
+
+        if (error) {
+            console.error("❌ [AuthProvider] Error fetching role permissions:", error);
+        }
+
+        let permissions: string[] = [];
+        
+        if (roleData && roleData.role_permissions) {
+            permissions = roleData.role_permissions
+                .map((rp: any) => rp.permissions?.code)
+                .filter(Boolean);
+        } else {
+             console.warn(`⚠️ [AuthProvider] No permissions found for role: ${profile.role}`);
+        }
+
+        return { ...profile, permissions };
     };
 
     const mapAndSetUser = useCallback(async (authUser: any, isLoginEvent = false) => {
@@ -66,8 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        // Recuperar rol de SessionStorage (Persistencia ante F5)
+        // Recuperar rol y permisos de SessionStorage (Persistencia ante F5)
         const cachedRole = sessionStorage.getItem(`role_${authUser.id}`);
+        const cachedPermissions = sessionStorage.getItem(`perms_${authUser.id}`);
         
         // 1. OPTIMISTIC UPDATE
         const optimisticUser: User = {
@@ -75,8 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: authUser.email!,
             name: authUser.user_metadata.full_name || authUser.email!,
             avatar_url: authUser.user_metadata.avatar_url,
-            // Prioridad: Rol ya en state > Rol en SessionStorage > FREE_USER
-            role: (user && user.id === authUser.id) ? user.role : (cachedRole as any || 'FREE_USER')
+            role: (user && user.id === authUser.id) ? user.role : (cachedRole || 'FREE_USER'),
+            permissions: (user && user.id === authUser.id) ? user.permissions : (cachedPermissions ? JSON.parse(cachedPermissions) : [])
         };
 
         setUser(currentUser => {
@@ -86,16 +127,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return optimisticUser;
         });
 
-        setIsLoading(false);
+        // Si no tenemos permisos cacheados, mantenemos loading true un poco más
+        if (!cachedPermissions) {
+             // Keep loading
+        } else {
+            setIsLoading(false);
+        }
 
         // 2. REVALIDACIÓN EN SEGUNDO PLANO
         try {
-            let profile = null;
-            profile = await fetchProfileDirectly(authUser.id);
+            const profile = await fetchProfileWithPermissions(authUser.id);
 
             if (profile) {
-                // VERIFICACIÓN DE ESTADO ACTIVO
-                if (profile.is_active === false) { // Explicit check for false
+                if (profile.is_active === false) {
                     await supabase.auth.signOut();
                     setUser(null);
                     sessionStorage.clear();
@@ -103,20 +147,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     return;
                 }
 
-                // Guardar rol confirmado en SessionStorage para futuros F5
                 sessionStorage.setItem(`role_${authUser.id}`, profile.role);
+                sessionStorage.setItem(`perms_${authUser.id}`, JSON.stringify(profile.permissions));
 
                 setUser(prev => {
-                    if (prev && prev.role !== profile.role) {
-                         return { ...prev, role: profile.role };
+                    if (prev && (prev.role !== profile.role || JSON.stringify(prev.permissions) !== JSON.stringify(profile.permissions))) {
+                         return { 
+                             ...prev, 
+                             role: profile.role,
+                             permissions: profile.permissions
+                         };
+                    }
+                    if (!prev) {
+                        return {
+                            id: authUser.id,
+                            email: authUser.email!,
+                            name: authUser.user_metadata.full_name || authUser.email!,
+                            avatar_url: authUser.user_metadata.avatar_url,
+                            role: profile.role,
+                            permissions: profile.permissions
+                        };
                     }
                     return prev;
                 });
             }
         } catch (err) {
             console.error("❌ [AuthProvider] Error revalidando perfil:", err);
+        } finally {
+            setIsLoading(false);
         }
-    }, [router, supabase]); // Removemos 'user' de deps para evitar ciclos, usamos la versión funcional de setUser
+    }, [supabase]); // Removed mapAndSetUser and router to avoid loops
 
     useEffect(() => {
         let mounted = true;
@@ -133,6 +193,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 if (mounted) {
                     await mapAndSetUser(session?.user);
+                } else {
+                    setIsLoading(false);
                 }
             } catch (error) {
                 console.error("Excepción en initializeAuth:", error);
@@ -153,11 +215,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
                 await mapAndSetUser(session?.user);
             } else if (event === 'SIGNED_OUT') {
-                // Limpiar cache de rol al salir
                 sessionStorage.clear();
                 setUser(null);
                 setIsLoading(false);
-                // router.replace('/login'); // Lo manejamos en el botón de logout o componente
+            } else if (event === 'USER_UPDATED') {
+                 await mapAndSetUser(session?.user);
             }
         });
 
@@ -165,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             mounted = false;
             subscription.unsubscribe();
         };
-    }, [supabase, mapAndSetUser, router]);
+    }, [supabase, mapAndSetUser]); // router removed
 
     const signInWithGoogle = async () => {
         await supabase.auth.signInWithOAuth({
@@ -187,7 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 await logAuthEvent('LOGOUT', user.email, user.id);
             }
             await supabase.auth.signOut();
-            sessionStorage.clear(); // Limpieza importante
+            sessionStorage.clear();
             setUser(null);
             router.replace('/login');
         } catch (error) {
@@ -196,8 +258,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const checkPermission = useCallback((permissionCode: string): boolean => {
+        if (!user) return false;
+        
+        // 1. Super Admin -> Acceso Total (Bypass)
+        if (user.role === 'SUPER_ADMIN') {
+            return true; 
+        }
+
+        // 2. Verificar permiso explícito
+        const hasPermission = user.permissions?.includes(permissionCode);
+        
+        return hasPermission || false;
+    }, [user]);
+
+    const refreshProfile = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            await mapAndSetUser(session.user);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, signInWithGoogle, signOut }}>
+        <AuthContext.Provider value={{ user, isLoading, signInWithGoogle, signOut, checkPermission, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );

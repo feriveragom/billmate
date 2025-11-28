@@ -30,53 +30,37 @@
 - `lib/supabase/server.ts`: Cliente para Server Components
 - `middleware.ts`: Gestión de sesión en Edge Runtime
 - `app/auth/callback/route.ts`: Endpoint de callback OAuth
-- `components/features/auth/AuthProvider.tsx`: Context con estado de usuario
-- `components/features/auth/ProtectedRoute.tsx`: Wrapper para rutas privadas
+- `components/features/auth/AuthProvider.tsx`: Context con estado de usuario y **carga de permisos**.
+- `components/features/auth/ProtectedRoute.tsx`: Wrapper para rutas privadas basado en **Permisos**.
 - `app/login/page.tsx`: Página de login con botón de Google
 
-**Base de Datos (Supabase SQL):**
-```sql
--- Tabla de perfiles
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-  email TEXT,
-  full_name TEXT,
-  avatar_url TEXT,
-  role TEXT DEFAULT 'FREE_USER',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+#### 2. Sistema de Seguridad Avanzado (Permission-Driven RBAC)
 
--- Trigger de auto-creación
-CREATE FUNCTION handle_new_user() ...
-CREATE TRIGGER on_auth_user_created ...
-```
-
-#### 2. Sistema de Roles (RBAC)
-
-**Roles Activos:**
-- `SUPER_ADMIN`: Acceso total (asignado a `feriveragom@gmail.com`)
-- `FREE_USER`: Usuario estándar (por defecto)
+**Arquitectura:**
+- El sistema se basa puramente en **Permisos** (`permissions`), no en roles hardcodeados.
+- **Roles:** Son dinámicos y gestionables desde la UI. Existen roles base (`SUPER_ADMIN`, `ADMIN`, `FREE_USER`, `PREMIUM_USER`) pero pueden crearse más.
+- **Automatismo:** Trigger en DB asegura que `SUPER_ADMIN` y `ADMIN` hereden automáticamente cualquier permiso nuevo creado.
 
 **Protección de Rutas:**
-- `/admin/*`: Solo `SUPER_ADMIN`
-- Rutas generales: Cualquier usuario autenticado
+- `/admin/users` -> Requiere `admin.users.manage`
+- `/admin/roles` -> Requiere `admin.roles.manage`
+- `/admin/logs` -> Requiere `admin.logs.view`
+- `/admin/permissions` -> Requiere `admin.roles.manage`
 
 #### 3. Panel de Administración
 
 **Rutas:**
 - `/admin` -> Redirige a `/admin/users`
-- `/admin/users` -> Gestión de Usuarios
-- `/admin/roles` -> Visualización de Roles (Mock)
+- `/admin/users` -> Gestión de Usuarios (Banear, Cambiar Rol)
+- `/admin/roles` -> Gestión de Roles (Crear/Editar Roles y asignar Permisos)
+- `/admin/permissions` -> Gestión de Permisos (Crear/Editar definiciones de permisos)
 - `/admin/logs` -> Logs de Auditoría
 
 **Funcionalidades Activas:**
-- **Layout Admin (`admin/layout.tsx`):** Sidebar persistente y navegación separada.
-- Lista de usuarios reales desde Supabase
-- Visualización de roles
-- Avatar de Google (con `referrerPolicy="no-referrer"`)
-- Búsqueda de usuarios (UI lista, lógica pendiente)
-- **Logs de Auditoría (implementado con Supabase)**
+- **Layout Admin (`admin/layout.tsx`):** Sidebar persistente y navegación condicional basada en permisos.
+- Gestión CRUD completa de Roles y Permisos.
+- Matriz de asignación de permisos a roles.
+- Logs de Auditoría completos.
 
 #### 4. Sistema de Logs de Auditoría
 
@@ -93,7 +77,7 @@ CREATE TRIGGER on_auth_user_created ...
 - ✅ Filtros por usuario (dropdown)
 - ✅ Filtros por tipo de acción (LOGIN, SIGNUP, DELETE, etc.)
 - ✅ Ordenado por fecha descendente
-- ✅ Solo accesible para SUPER_ADMIN (protegido por RLS)
+- ✅ Solo accesible si se tiene permiso `admin.logs.view`
 - ✅ Eliminación individual de logs
 
 #### 5. Perfil de Usuario
@@ -116,14 +100,14 @@ CREATE TRIGGER on_auth_user_created ...
 - [ ] Reorganizar `app/` utilizando **Route Groups** para separar layouts:
     - `(auth)`: Login y flujos de autenticación.
     - `(social)`: App principal (Dashboard, Perfil) con diseño móvil-first.
-    - `(admin)`: Panel de administración con layout denso y sidebar.
-- [ ] Crear componente reutilizable `UserMenu` (Avatar + Dropdown) para usar en ambos layouts.
+    - `(admin)`: Panel de administración con layout denso y sidebar. (YA EXISTENTE, FALTA MOVER EL RESTO)
+- [x] Crear componente reutilizable `UserMenu` (Avatar + Dropdown) para usar en ambos layouts.
 - [ ] Limpiar `app/layout.tsx` raíz (eliminar UI global, dejar solo Providers).
 
 ### Autenticación y Admin
-- [ ] Implementar lógica de búsqueda de usuarios en Panel Admin
-- [ ] Crear menú de acciones por usuario (editar rol, banear, etc.)
-- [ ] Sistema dinámico de Roles y Permisos (CRUD completo desde UI)
+- [x] Implementar lógica de búsqueda de usuarios en Panel Admin
+- [x] Crear menú de acciones por usuario (editar rol, banear, etc.)
+- [x] Sistema dinámico de Roles y Permisos (CRUD completo desde UI)
 - [x] Funcionalidad de Logout en la UI
 - [x] Página de Perfil de Usuario
 
@@ -212,6 +196,7 @@ app/
     ├── layout.tsx         <-- Layout B: Sidebar denso + Header de Admin
     ├── users/page.tsx     <-- URL: /admin/users
     ├── roles/page.tsx     <-- URL: /admin/roles
+    ├── permissions/page.tsx <-- URL: /admin/permissions
     └── logs/page.tsx      <-- URL: /admin/logs
 ```
 
