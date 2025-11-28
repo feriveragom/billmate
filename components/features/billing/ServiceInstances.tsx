@@ -18,10 +18,10 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ServiceInstance, ServiceStatus } from '@/lib/types';
-import Modal from './Modal';
+import Modal from '../../ui/Modal';
 import ServiceInstanceForm from './ServiceInstanceForm';
 import ServiceInstanceDetails from './ServiceInstanceDetails';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from '../../ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -426,18 +426,18 @@ function ServiceInstanceFeedItem({
                             onClick={(e) => e.stopPropagation()}
                         >
                             <button
-                                onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                                className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
-                                title="Editar"
-                            >
-                                <Pencil size={16} />
-                            </button>
-                            <button
                                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
                                 className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
                                 title="Eliminar"
                             >
                                 <Trash2 size={16} />
+                            </button>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                                className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
+                                title="Editar"
+                            >
+                                <Pencil size={16} />
                             </button>
                         </motion.div>
                     )}

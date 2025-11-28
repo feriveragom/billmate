@@ -115,3 +115,13 @@ body {
   background: #1a1625;
   /* Borde eliminado para evitar scroll */
 }
+
+/* Custom Sonner Toast Styles */
+/* Mover botón de cierre a la derecha */
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  left: auto !important;
+  right: 16px !important;
+  top: 16px !important;
+  transform: none !important;
+}

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ServiceInstance, Activity, ServiceDefinition } from '../core/domain/entities';
+import { useAuth } from '../components/features/auth/AuthProvider';
 import {
     ServiceInstanceUseCases,
     ServiceDefinitionUseCases,
@@ -54,6 +55,8 @@ interface AppContextType extends AppState {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth();
+
     // Local State (View Model)
     const [services, setServices] = useState<ServiceInstance[]>([]);
     const [activities, setActivities] = useState<Activity[]>([]);
@@ -66,44 +69,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Load Initial Data
     useEffect(() => {
         const loadData = async () => {
-            setServices(await serviceUseCases.getAll());
-            setServiceDefinitions(await definitionUseCases.getAll());
+            if (!user) return; // Wait for user
+
+            // In a real app, repositories would filter by userId automatically via RLS or query
+            // Here we simulate it by filtering the mock data
+            const allServices = await serviceUseCases.getAll();
+            setServices(allServices.filter(s => s.userId === user.id));
+
+            const allDefinitions = await definitionUseCases.getAll();
+            setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
+
             setActivities(await activityUseCases.getAll());
             setArchivedActivities(await activityUseCases.getArchived());
         };
         loadData();
-    }, []);
+    }, [user]);
 
     // Actions (Controllers)
     const addService = async (service: ServiceInstance) => {
-        await serviceUseCases.add(service);
-        setServices(await serviceUseCases.getAll());
+        if (!user) return;
+        const serviceWithUser = { ...service, userId: user.id };
+        await serviceUseCases.add(serviceWithUser);
+
+        // Refresh
+        const allServices = await serviceUseCases.getAll();
+        setServices(allServices.filter(s => s.userId === user.id));
     };
 
     const updateService = async (id: string, updates: Partial<ServiceInstance>) => {
+        if (!user) return;
         await serviceUseCases.update(id, updates);
-        setServices(await serviceUseCases.getAll());
+
+        const allServices = await serviceUseCases.getAll();
+        setServices(allServices.filter(s => s.userId === user.id));
     };
 
     const deleteService = async (id: string) => {
+        if (!user) return;
         await serviceUseCases.delete(id);
-        setServices(await serviceUseCases.getAll());
+
+        const allServices = await serviceUseCases.getAll();
+        setServices(allServices.filter(s => s.userId === user.id));
     };
 
     const addServiceDefinition = async (definition: ServiceDefinition) => {
-        await definitionUseCases.add(definition);
-        setServiceDefinitions(await definitionUseCases.getAll());
+        if (!user) return;
+        const defWithUser = { ...definition, userId: user.id };
+        await definitionUseCases.add(defWithUser);
+
+        const allDefinitions = await definitionUseCases.getAll();
+        setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
     };
 
     const updateServiceDefinition = async (id: string, updates: Partial<ServiceDefinition>) => {
+        if (!user) return;
         await definitionUseCases.update(id, updates);
-        setServiceDefinitions(await definitionUseCases.getAll());
+
+        const allDefinitions = await definitionUseCases.getAll();
+        setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
     };
 
     const deleteServiceDefinition = async (id: string) => {
+        if (!user) return;
         try {
             await definitionUseCases.delete(id);
-            setServiceDefinitions(await definitionUseCases.getAll());
+            const allDefinitions = await definitionUseCases.getAll();
+            setServiceDefinitions(allDefinitions.filter(d => d.userId === user.id));
         } catch (error) {
             console.error(error);
             alert(error instanceof Error ? error.message : 'Error deleting definition');

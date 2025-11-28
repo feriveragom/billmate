@@ -1,144 +1,230 @@
-# Plan de Implementación: El Corazón del MVP
+# Plan de Implementación MVP - BillMate
 
-Este documento detalla la estrategia para implementar los 3 pilares fundamentales de BillMate: El Motor de Replicación, el Dashboard Financiero y el Calendario.
+## Estado Actual del Proyecto
 
-## 1. El Motor de Replicación (Chain Generation Engine)
+### ✅ Implementado
 
-El objetivo es automatizar la continuidad de los pagos sin intervención manual constante.
+#### 1. Autenticación Real (Google OAuth + Supabase)
 
-### Lógica de Negocio
-*   **Disparador (Trigger):**
-    *   **Evento Principal:** "Cierre de Día" (Nightly Job). Un proceso que corre cada noche (ej: 00:01 AM).
-    *   **Condición:** Busca todas las `ServiceInstance` activas.
-    *   **Reglas de Replicación (Chain Generation):**
-        *   **Pending -> Overdue:** Si `dueDate` < `today` y status es `pending` -> Pasa a `overdue` y **GENERA REPLICA**.
-        *   **Pending -> Paid:** Al marcarse como `paid` -> **GENERA REPLICA** (Discusión pendiente: ¿inmediata o al vencimiento?).
-        *   **Pending -> Cancelled:** Al marcarse como `cancelled` -> **NO GENERA REPLICA** (Rompe la cadena).
-    *   **Regla de "Rescate":** Un usuario puede reactivar una instancia `cancelled` a `pending`. Si la fecha ya pasó, el usuario debería actualizarla al mes siguiente manualmente o el sistema sugerirlo.
+**Flujo Completo:**
+- Login con Google mediante Supabase Auth
+- Callback automático después del OAuth
+- Gestión de sesión con cookies seguras (HttpOnly, Secure, SameSite)
+- Persistencia de sesión entre recargas
 
-## 1.1 Matriz de Transiciones de Estado (Lógica de Replicación)
+**Infraestructura:**
+- **Supabase:**
+  - Proyecto: `unflajvxpyqnndevuane.supabase.co`
+  - Tabla `profiles` con RLS activado
+  - Trigger automático `on_auth_user_created` para sincronización
+  - Políticas de seguridad: lectura pública, edición propia
+  
+- **Google Cloud:**
+  - Proyecto: BillMate
+  - OAuth Client ID configurado (Web Application)
+  - Authorized Origins: `localhost:3000`, `localhost:3001`, Supabase URL
+  - Redirect URI: `https://unflajvxpyqnndevuane.supabase.co/auth/v1/callback`
 
-Esta matriz define qué sucede con el **Motor de Replicación** cuando una instancia cambia de estado.
+**Código Frontend:**
+- `lib/supabase/client.ts`: Cliente para browser
+- `lib/supabase/server.ts`: Cliente para Server Components
+- `middleware.ts`: Gestión de sesión en Edge Runtime
+- `app/auth/callback/route.ts`: Endpoint de callback OAuth
+- `components/features/auth/AuthProvider.tsx`: Context con estado de usuario
+- `components/features/auth/ProtectedRoute.tsx`: Wrapper para rutas privadas
+- `app/login/page.tsx`: Página de login con botón de Google
 
-### Desde PENDIENTE (Flujo Normal)
-| Transición | Acción del Motor | Descripción |
-| :--- | :--- | :--- |
-| **Pending -> Paid** | 🚀 **CREA RÉPLICA** | El usuario cumplió. Se genera la instancia del próximo mes. |
-| **Pending -> Overdue** | 🚀 **CREA RÉPLICA** | Se venció la fecha. Se asume continuidad y se genera la del próximo mes para no perder el hilo. |
-| **Pending -> Cancelled** | 🛑 **ROMPE CADENA** | El usuario indica que este servicio ya no corre. No se genera nada a futuro. |
+**Base de Datos (Supabase SQL):**
+```sql
+-- Tabla de perfiles
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  email TEXT,
+  full_name TEXT,
+  avatar_url TEXT,
+  role TEXT DEFAULT 'FREE_USER',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-### Desde CANCELADO (Flujo de "Rescate" / Corrección)
-| Transición | Acción del Motor | Descripción |
-| :--- | :--- | :--- |
-| **Cancelled -> Pending** | ⏳ **ESPERA** | "Rescate". Vuelve a estar activa. **No crea réplica aún**; esperará a que se pague o venza de nuevo. *Nota: Si la fecha es pasada, el usuario debe actualizarla.* |
-| **Cancelled -> Overdue** | 🚀 **CREA RÉPLICA** | "Rescate Tardío". Al pasar a vencida, el sistema asume que la deuda es válida y restaura la cadena creando la siguiente. |
-| **Cancelled -> Paid** | 🚀 **CREA RÉPLICA** | "Rescate Pagado". Al pagar una cancelada, se restaura la cadena y se crea la siguiente. |
+-- Trigger de auto-creación
+CREATE FUNCTION handle_new_user() ...
+CREATE TRIGGER on_auth_user_created ...
+```
 
-### Desde PAGADO (Corrección de Error)
-| Transición | Acción del Motor | Descripción |
-| :--- | :--- | :--- |
-| **Paid -> Pending** | ⚠️ **MANTIENE** | "Me equivoqué, no pagué". Si la réplica ya existía, **se deja quieta** (no se borra para evitar pérdida de datos). |
-| **Paid -> Cancelled** | 🛑 **ROMPE FUTURO** | "Me devolvieron el dinero". Se corta la generación de *subsiguientes* réplicas. |
-| **Paid -> Overdue** | ⚠️ **MANTIENE** | Raro. Corrección de estado. La réplica ya debería existir. |
+#### 2. Sistema de Roles (RBAC)
 
-### Desde VENCIDO (Gestión de Mora)
-| Transición | Acción del Motor | Descripción |
-| :--- | :--- | :--- |
-| **Overdue -> Paid** | ✅ **VERIFICA** | Se paga tarde. La réplica ya debería existir (se creó al vencer). Si no existe, la crea. |
-| **Overdue -> Cancelled** | 🛑 **ROMPE CADENA** | "No voy a pagar y cancelo el servicio". Se detiene la generación futura. |
-| **Overdue -> Pending** | ⏳ **ESPERA** | Raro (quizás extensión de fecha). Se comporta igual que Pending normal. |
+**Roles Activos:**
+- `SUPER_ADMIN`: Acceso total (asignado a `feriveragom@gmail.com`)
+- `FREE_USER`: Usuario estándar (por defecto)
 
-## 1.2 Escenarios de Disparo de Replicación
+**Protección de Rutas:**
+- `/admin/*`: Solo `SUPER_ADMIN`
+- Rutas generales: Cualquier usuario autenticado
 
-Basado en la matriz anterior, identificamos dos tipos de disparadores para la creación de réplicas:
+#### 3. Panel de Administración
 
-### A. Disparo Automático (Nightly Job)
-*Ocurre sin intervención del usuario, por el paso del tiempo.*
-1.  **Vencimiento Natural:**
-    *   **Condición:** `CurrentDate > DueDate` Y `Status == Pending`.
-    *   **Acción:** El sistema cambia el estado a `Overdue` Y **crea la réplica** del mes siguiente.
+**Rutas:**
+- `/admin` -> Redirige a `/admin/users`
+- `/admin/users` -> Gestión de Usuarios
+- `/admin/roles` -> Visualización de Roles (Mock)
+- `/admin/logs` -> Logs de Auditoría
 
-### B. Disparo por Acción de Usuario (Immediate Trigger)
-*Ocurre en tiempo real cuando el usuario interactúa con la UI.*
-1.  **Pago Anticipado/Puntual:**
-    *   **Acción:** Usuario marca `Pending` -> `Paid`.
-    *   **Resultado:** Se crea la réplica inmediatamente.
-2.  **Rescate de Cancelado (a Vencido/Pagado):**
-    *   **Acción:** Usuario corrige un error y pasa `Cancelled` -> `Overdue` o `Paid`.
-    *   **Resultado:** Se restaura la cadena creando la réplica faltante.
-3.  **Pago Tardío (Safety Net):**
-    *   **Acción:** Usuario marca `Overdue` -> `Paid`.
-    *   **Resultado:** El sistema verifica si existe la réplica (debería, por el punto A). Si por alguna razón no existe (ej: fallo del cron), la crea en este momento.
+**Funcionalidades Activas:**
+- **Layout Admin (`admin/layout.tsx`):** Sidebar persistente y navegación separada.
+- Lista de usuarios reales desde Supabase
+- Visualización de roles
+- Avatar de Google (con `referrerPolicy="no-referrer"`)
+- Búsqueda de usuarios (UI lista, lógica pendiente)
+- **Logs de Auditoría (implementado con Supabase)**
 
-### Algoritmo de Generación (`GenerateNextInstanceUseCase`)
-1.  **Input:** Una `ServiceInstance` existente (la "madre").
-2.  **Verificación:**
-    *   ¿Tiene regla de recurrencia? (Si es `null`, termina).
-    *   ¿Ya existe una instancia hija para el siguiente periodo? (Evitar duplicados).
-3.  **Cálculo de Nueva Fecha (`NextDueDate`):**
-    *   *Mensual:* `CurrentDueDate` + 1 Mes (Manejo de días 28/30/31).
-    *   *Semanal:* `CurrentDueDate` + 7 días.
-    *   *Intervalo:* `CurrentDueDate` + `intervalDays`.
-4.  **Clonación y Persistencia:**
-    *   Crear nueva `ServiceInstance` con:
-        *   `definitionId`: Igual a la madre.
-        *   `name`: Generar nombre dinámico (ej: "Gimnasio" -> "Gimnasio [Mes Actual]").
-        *   `dueDate`: La calculada.
-        *   `status`: `pending`.
-        *   `amount`: Copiar de la madre (el usuario puede editarlo después si varió).
+#### 4. Sistema de Logs de Auditoría
 
-### Tareas Técnicas
-- [ ] Crear `GenerateNextInstanceUseCase.ts`.
-- [ ] Implementar lógica de cálculo de fechas robusta (usando `date-fns` o nativo).
-- [ ] Simular el "Nightly Job" con un botón de "Debug: Avanzar Día" en la UI por ahora (ya que no tenemos backend real de Cron aún).
+**Ruta:** `/admin/logs`
 
----
+**Base de Datos:**
+- Tabla `audit_logs` con RLS
+- Trigger automático `on_user_signup_log` para registro de nuevos usuarios
+- Función helper `log_audit_event()` para logs manuales
+- Función de limpieza `cleanup_old_audit_logs(days)`
 
-## 2. Dashboard Financiero (El Totalizador)
+**Funcionalidades Implementadas:**
+- ✅ Visualización de logs desde Supabase
+- ✅ Filtros por usuario (dropdown)
+- ✅ Filtros por tipo de acción (LOGIN, SIGNUP, DELETE, etc.)
+- ✅ Ordenado por fecha descendente
+- ✅ Solo accesible para SUPER_ADMIN (protegido por RLS)
+- ✅ Eliminación individual de logs
 
-El objetivo es responder: "¿Cómo voy este mes?".
+#### 5. Perfil de Usuario
 
-### Lógica de Negocio
-*   **Alcance Temporal:** Mes Calendario (1 al 30/31).
-*   **Filtrado:** Incluir todas las `ServiceInstance` cuya `dueDate` caiga en el mes seleccionado.
+**Ruta:** `/profile`
 
-### Métricas Clave
-1.  **Total a Pagar (Presupuesto):** Suma de `amount` de todas las instancias del mes.
-2.  **Total Pagado:** Suma de `amount` (o `paidAmount`) de las instancias con status `paid`.
-3.  **Pendiente:** (Total a Pagar - Total Pagado).
-4.  **Proyección:** Si hay servicios recurrentes que aún no tienen instancia generada para este mes (porque la cadena viene del mes anterior), el dashboard debería ser capaz de "prever" ese gasto (Opcional para V1, pero ideal).
-
-### Tareas Técnicas
-- [ ] Crear `GetMonthlyFinancialsUseCase.ts`.
-- [ ] Diseñar componente `FinancialSummaryCard` en el Dashboard.
-- [ ] Implementar selector de mes (Anterior / Actual / Siguiente).
+**Funcionalidades:**
+- Visualización de avatar, nombre, email y rol.
+- Desglose detallado de permisos activos según el rol.
+- **Header Global (`TopHeader.tsx`):**
+    - Menú de usuario con avatar.
+    - Acceso directo a Perfil y Admin.
+    - **Logout funcional.**
 
 ---
 
-## 3. Calendario Mensual (El Almanaque)
+## 📋 Pendientes
 
-El objetivo es visualizar la distribución temporal de los pagos.
+### Refactorización de Arquitectura (Route Groups)
+- [ ] Reorganizar `app/` utilizando **Route Groups** para separar layouts:
+    - `(auth)`: Login y flujos de autenticación.
+    - `(social)`: App principal (Dashboard, Perfil) con diseño móvil-first.
+    - `(admin)`: Panel de administración con layout denso y sidebar.
+- [ ] Crear componente reutilizable `UserMenu` (Avatar + Dropdown) para usar en ambos layouts.
+- [ ] Limpiar `app/layout.tsx` raíz (eliminar UI global, dejar solo Providers).
 
-### Diseño de Interfaz
-*   **Vista:** Grilla clásica de mes (7 columnas, 5-6 filas).
-*   **Celdas (Días):**
-    *   Mostrar indicadores (puntos o mini-barras) de los pagos de ese día.
-    *   Color según estado: Verde (Pagado), Gris (Pendiente), Rojo (Vencido).
-*   **Interacción:**
-    *   Clic en un día -> Despliega lista de pagos de ese día (Bottom Sheet o Modal).
+### Autenticación y Admin
+- [ ] Implementar lógica de búsqueda de usuarios en Panel Admin
+- [ ] Crear menú de acciones por usuario (editar rol, banear, etc.)
+- [ ] Sistema dinámico de Roles y Permisos (CRUD completo desde UI)
+- [x] Funcionalidad de Logout en la UI
+- [x] Página de Perfil de Usuario
 
-### Lógica de Visualización
-*   Reutilizar la lógica de filtrado por mes del Dashboard.
-*   Mapear `ServiceInstance[]` a un objeto `Record<DayString, ServiceInstance[]>`.
+### Core Business (Pagos Recurrentes)
+- [ ] Motor de Replicación (generación automática de pagos mensuales)
+- [ ] Dashboard Financiero (totales del mes, proyecciones)
+- [ ] Calendario de Pagos (visualización por fecha)
+- [ ] Gestión de Definiciones de Servicio (crear categorías)
+- [ ] Gestión de Instancias de Pago (marcar como pagado/vencido)
 
-### Tareas Técnicas
-- [ ] Crear componente `CalendarView.tsx`.
-- [ ] Implementar navegación entre meses.
-- [ ] Integrar con el store para obtener las instancias.
+### Notificaciones
+- [ ] Sistema de notificaciones In-App
+- [ ] Push Notifications (PWA)
+- [ ] Alertas de vencimiento
+
+### Funcionalidades Sociales
+- [ ] Solicitud de ayuda de pago (compartir con otros usuarios)
+- [ ] Pago colaborativo
+
+### E-Commerce (Opcional MVP)
+- [ ] Catálogo de productos
+- [ ] Gestión de órdenes
+
+### Infraestructura
+- [ ] Configuración de dominio personalizado
+- [ ] Deploy con proxy reverso
+- [ ] Configuración de PWA (Manifest, Service Worker)
+- [ ] Build de APK (Capacitor/TWA)
+
+### Workflow de Migraciones de Base de Datos
+
+**Configuración Inicial (Solo una vez):**
+```bash
+# 1. Instalar CLI (vía npx, no requiere instalación global)
+npx supabase --version
+
+# 2. Autenticarse
+npx supabase login
+
+# 3. Enlazar proyecto local con remoto
+npx supabase link --project-ref unflajvxpyqnndevuane
+```
+
+**Crear y Aplicar Migraciones:**
+```bash
+# 1. Crear nueva migración
+npx supabase migration new nombre_descriptivo
+
+# 2. Editar el archivo generado en supabase/migrations/
+# (Añadir el SQL deseado)
+
+# 3. Aplicar a Supabase remoto
+npx supabase db push
+```
+
+**Comandos Útiles:**
+```bash
+# Ver diferencias entre local y remoto
+npx supabase db diff
+
+# Traer esquema remoto a local
+npx supabase db pull
+
+# Dump de datos
+npx supabase db dump --data-only
+```
 
 ---
 
-## Plan de Ejecución (Siguientes Pasos)
+## Arquitectura Propuesta (Route Groups)
 
-1.  **Paso 1:** Implementar el **Calendario y Dashboard** (Puntos 2 y 3) primero. Esto nos da la visualización necesaria para verificar si el motor funciona.
-2.  **Paso 2:** Implementar el **Motor de Replicación** (Punto 1) y probarlo manualmente con el botón de debug.
+### Estructura de Carpetas
+```text
+app/
+├── layout.tsx             <-- (Root) Solo Providers y configuración global. SIN UI.
+│
+├── (auth)/                <-- Grupo 1: Autenticación
+│   ├── login/page.tsx     <-- URL: /login
+│
+├── (social)/              <-- Grupo 2: Diseño "Red Social" (App Usuario)
+│   ├── layout.tsx         <-- Layout A: TopHeader Simple + BottomNav (Móvil)
+│   ├── page.tsx           <-- URL: / (Dashboard)
+│   └── profile/page.tsx   <-- URL: /profile
+│
+└── admin/                 <-- Grupo 3: Diseño "Profesional" (Admin)
+    ├── layout.tsx         <-- Layout B: Sidebar denso + Header de Admin
+    ├── users/page.tsx     <-- URL: /admin/users
+    ├── roles/page.tsx     <-- URL: /admin/roles
+    └── logs/page.tsx      <-- URL: /admin/logs
+```
+
+### Backend (Supabase)
+- **Auth:** Google OAuth
+- **Database:** PostgreSQL con RLS
+- **Storage:** (No utilizado aún)
+- **Functions:** (No utilizadas aún)
+
+### Stack Tecnológico
+- **Framework:** Next.js 15 (App Router, RSC)
+- **Autenticación:** Supabase Auth + Google OAuth
+- **Base de Datos:** PostgreSQL (Supabase)
+- **Estilos:** Tailwind CSS
+- **Iconos:** Lucide React
+- **Estado:** Zustand + React Context

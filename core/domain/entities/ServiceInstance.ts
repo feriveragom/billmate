@@ -2,6 +2,7 @@ import { RecurrenceRule, ServiceStatus } from './Common';
 
 export interface ServiceInstance {
     id: string;
+    userId: string; // Propietario de la instancia
     definitionId: string; // Link a la definición (padre)
 
     // Datos específicos de esta instancia

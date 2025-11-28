@@ -1,23 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-    Plus, 
-    Trash2, 
-    Pencil, 
-    LayoutGrid, 
-    LayoutList, 
-    Eye, 
-    EyeOff, 
+import {
+    Plus,
+    Trash2,
+    Pencil,
+    LayoutGrid,
+    LayoutList,
+    Eye,
+    EyeOff,
     MoreVertical,
     Search
 } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ServiceDefinition, ServiceInstance } from '@/lib/types';
-import Modal from './Modal';
+import Modal from '../../ui/Modal';
 import ServiceDefinitionForm from './ServiceDefinitionForm';
-import ServiceInstanceForm from './ServiceInstanceForm';
-import ConfirmDialog from './ConfirmDialog';
+import ServiceInstanceForm from '../billing/ServiceInstanceForm';
+import ConfirmDialog from '../../ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,7 +37,7 @@ export default function ServiceDefinitions() {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isHidden, setIsHidden] = useState(false);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-    
+
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; definition: ServiceDefinition | null }>({
         isOpen: false,
         definition: null
@@ -152,7 +152,8 @@ export default function ServiceDefinitions() {
 
                 // Cache visual
                 icon: selectedDefForInstance.icon,
-                color: selectedDefForInstance.color
+                color: selectedDefForInstance.color,
+                forAccounting: false // Default value
             };
             addService(newInstance);
             setIsInstanceModalOpen(false);
@@ -326,12 +327,12 @@ function ServiceDefinitionGridItem({
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
 
     return (
-        <div 
+        <div
             onClick={onClick}
             className="group flex flex-col items-center gap-2 cursor-pointer"
         >
             <div className="relative">
-                <div 
+                <div
                     className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-border/50 group-active:scale-95 transition-transform"
                     style={{ backgroundColor: `${definition.color}15`, color: definition.color }}
                 >
@@ -365,20 +366,20 @@ function ServiceDefinitionGridItem({
                             className="absolute top-6 -right-2 z-50 flex flex-col gap-2 pt-2 items-center"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); onEdit(); }}
                                 className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
                                 title="Editar"
                             >
-                                <Pencil size={14} /> 
+                                <Pencil size={14} />
                             </button>
                             {!definition.isSystemService && (
-                                <button 
+                                <button
                                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
                                     className="w-7 h-7 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
                                     title="Eliminar"
                                 >
-                                    <Trash2 size={14} /> 
+                                    <Trash2 size={14} />
                                 </button>
                             )}
                         </motion.div>
@@ -386,7 +387,7 @@ function ServiceDefinitionGridItem({
                 </AnimatePresence>
             </div>
 
-            <span 
+            <span
                 className="text-[10px] font-medium text-foreground/80 text-center w-full truncate px-1"
             >
                 {definition.name}
@@ -413,12 +414,12 @@ function ServiceDefinitionListItem({
     const isImage = (icon: string) => icon?.startsWith('data:image') || icon?.startsWith('http') || icon?.startsWith('/');
 
     return (
-        <div 
+        <div
             onClick={onClick}
             className="group relative flex items-center gap-3 p-3 bg-card hover:bg-accent/50 rounded-xl border border-border/50 shadow-sm transition-all active:scale-[0.99] cursor-pointer"
         >
             {/* Icon */}
-            <div 
+            <div
                 className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-inner"
                 style={{ backgroundColor: `${definition.color}15`, color: definition.color }}
             >
@@ -438,7 +439,7 @@ function ServiceDefinitionListItem({
             </div>
 
             {/* Menu Trigger */}
-            <button 
+            <button
                 onClick={onToggleMenu}
                 className={cn(
                     "p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-full transition-colors",
@@ -459,22 +460,22 @@ function ServiceDefinitionListItem({
                         className="absolute right-14 z-50 flex flex-row gap-2 items-center"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                            className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
-                            title="Editar"
-                        >
-                            <Pencil size={16} /> 
-                        </button>
                         {!definition.isSystemService && (
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
                                 className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-red-500 shadow-md hover:scale-110 transition-transform"
                                 title="Eliminar"
                             >
-                                <Trash2 size={16} /> 
+                                <Trash2 size={16} />
                             </button>
                         )}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                            className="w-8 h-8 bg-background border border-border rounded-full flex items-center justify-center text-primary shadow-md hover:scale-110 transition-transform"
+                            title="Editar"
+                        >
+                            <Pencil size={16} />
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>

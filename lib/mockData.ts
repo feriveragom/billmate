@@ -4,6 +4,7 @@ import { ServiceInstance, Activity, ServiceDefinition } from './types';
 export const initialServiceInstances: ServiceInstance[] = [
     {
         id: 'inst-1',
+        userId: 'user-123-mock',
         definitionId: 'sys-agua',
         name: 'Agua',
         amount: 45.00,
@@ -18,6 +19,7 @@ export const initialServiceInstances: ServiceInstance[] = [
     },
     {
         id: 'inst-2',
+        userId: 'user-123-mock',
         definitionId: 'sys-electricidad',
         name: 'Electricidad',
         amount: 120.50,
@@ -33,6 +35,7 @@ export const initialServiceInstances: ServiceInstance[] = [
     },
     {
         id: 'inst-3',
+        userId: 'user-123-mock',
         definitionId: 'def-netflix',
         name: 'Netflix Premium',
         amount: 15.00,
@@ -48,6 +51,7 @@ export const initialServiceInstances: ServiceInstance[] = [
     },
     {
         id: 'inst-4',
+        userId: 'user-123-mock',
         definitionId: 'sys-gas',
         name: 'Gas',
         amount: 35.00,
@@ -62,6 +66,7 @@ export const initialServiceInstances: ServiceInstance[] = [
     },
     {
         id: 'inst-5',
+        userId: 'user-123-mock',
         definitionId: 'def-gimnasio',
         name: 'Gimnasio Enero - Cuota mensual',
         amount: 50.00,
@@ -88,6 +93,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     // Servicio Especial para Pagos Externos/Ayudas
     {
         id: 'sys-others',
+        userId: 'user-123-mock',
         name: 'Otros / Externos',
         icon: '🌐', // Icono global/genérico
         color: '#64748B', // Slate-500 (Neutro)
@@ -97,6 +103,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     // Servicios del Sistema
     {
         id: 'sys-telefono',
+        userId: 'user-123-mock',
         name: 'Teléfono',
         icon: '/icons/system/telefono.png',
         color: '#10B981',
@@ -105,6 +112,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     },
     {
         id: 'sys-electricidad',
+        userId: 'user-123-mock',
         name: 'Electricidad',
         icon: '/icons/system/electricidad.png',
         color: '#FACC15',
@@ -113,6 +121,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     },
     {
         id: 'sys-agua',
+        userId: 'user-123-mock',
         name: 'Agua',
         icon: '/icons/system/agua.png',
         color: '#3B82F6',
@@ -121,6 +130,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     },
     {
         id: 'sys-gas',
+        userId: 'user-123-mock',
         name: 'Gas',
         icon: '/icons/system/gas.png',
         color: '#F97316',
@@ -129,6 +139,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     },
     {
         id: 'sys-impuestos',
+        userId: 'user-123-mock',
         name: 'Impuestos',
         icon: '/icons/system/impuestos.png',
         color: '#EF4444',
@@ -137,6 +148,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     },
     {
         id: 'sys-recarga-movil',
+        userId: 'user-123-mock',
         name: 'Recarga Saldo Móvil',
         icon: '/icons/system/recarga_saldo_movil.png',
         color: '#8B5CF6',
@@ -145,6 +157,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     },
     {
         id: 'sys-recarga-nauta',
+        userId: 'user-123-mock',
         name: 'Recarga Nauta',
         icon: '/icons/system/recarga_nauta.png',
         color: '#06B6D4',
@@ -154,6 +167,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     // Servicios de Ejemplo
     {
         id: 'def-netflix',
+        userId: 'user-123-mock',
         name: 'Netflix',
         icon: '🎬',
         color: '#E50914',
@@ -161,6 +175,7 @@ export const initialServiceDefinitions: ServiceDefinition[] = [
     },
     {
         id: 'def-gimnasio',
+        userId: 'user-123-mock',
         name: 'Gimnasio',
         icon: '💪',
         color: '#10B981',

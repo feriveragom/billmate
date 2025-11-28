@@ -1,5 +1,6 @@
 export interface ServiceDefinition {
     id: string;
+    userId: string; // Propietario del servicio
     name: string;
     icon: string;
     color: string;
