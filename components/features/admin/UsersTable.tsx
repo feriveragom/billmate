@@ -5,11 +5,13 @@ import { createClient } from '@/lib/supabase/client';
 import { Search, Ban, CheckCircle, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import UserActionsMenu from './UserActionsMenu';
+import SelectInput from '@/components/ui/SelectInput';
 
 export default function UsersTable() {
     const [users, setUsers] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+    const [searchFilter, setSearchFilter] = useState<string>('');
 
     // Estado para Modal de Rol
     const [editingUser, setEditingUser] = useState<any | null>(null);
@@ -91,16 +93,32 @@ export default function UsersTable() {
         setActiveMenuId(null);
     };
 
+    // Preparar opciones para el SelectInput
+    const userOptions = [
+        { value: '', label: 'Todos los usuarios' },
+        ...users.map(user => ({
+            value: user.id,
+            label: `${user.full_name || 'Sin Nombre'} (${user.email})`
+        }))
+    ];
+
+    // Filtrar usuarios según selección
+    const filteredUsers = searchFilter
+        ? users.filter(u => u.id === searchFilter)
+        : users;
+
     return (
         <div className="space-y-6 relative">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Gestión de Usuarios</h2>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                    <input
-                        type="text"
+                <div className="w-80">
+                    <SelectInput
+                        value={searchFilter}
+                        onChange={setSearchFilter}
+                        options={userOptions}
                         placeholder="Buscar usuario..."
-                        className="pl-10 pr-4 py-2 bg-card border border-white/10 rounded-xl focus:border-primary outline-none w-64"
+                        isClearable={true}
+                        isSearchable={true}
                     />
                 </div>
             </div>
@@ -119,7 +137,7 @@ export default function UsersTable() {
                     <tbody className="divide-y divide-white/5 relative">
                         {isLoading ? (
                             <tr><td colSpan={5} className="p-8 text-center text-foreground/50">Cargando usuarios...</td></tr>
-                        ) : users.map(user => (
+                        ) : filteredUsers.map(user => (
                             <tr key={user.id} className={`hover:bg-white/5 transition relative ${!user.is_active ? 'opacity-60 bg-red-500/5' : ''} ${activeMenuId === user.id ? 'z-50' : 'z-0'}`}>
                                 <td className="p-4">
                                     <div className="flex items-center gap-3">

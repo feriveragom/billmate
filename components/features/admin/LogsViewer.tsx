@@ -6,21 +6,22 @@ import { Trash2, AlertCircle } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
+import SelectInput from '@/components/ui/SelectInput';
 
 export default function LogsViewer() {
     const searchParams = useSearchParams();
     const [logs, setLogs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    
+
     // Filtros
     const [selectedUser, setSelectedUser] = useState<string>('all');
     const [selectedAction, setSelectedAction] = useState<string>('all');
     const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    
+
     // Selección
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    
+
     // Estado para Dialogs
     const [confirmState, setConfirmState] = useState<{
         isOpen: boolean;
@@ -62,7 +63,7 @@ export default function LogsViewer() {
             try {
                 setIsLoading(true);
                 const supabase = createClient();
-                
+
                 let query = supabase
                     .from('audit_logs')
                     .select('*')
@@ -71,13 +72,13 @@ export default function LogsViewer() {
                 // Filtros
                 if (selectedUser !== 'all') query = query.eq('user_id', selectedUser);
                 if (selectedAction !== 'all') query = query.eq('action_type', selectedAction);
-                
+
                 // Filtro de Fechas (Inicio del día start - Fin del día end)
                 if (startDate) query = query.gte('created_at', `${startDate}T00:00:00`);
                 if (endDate) query = query.lte('created_at', `${endDate}T23:59:59`);
 
                 const { data, error } = await query;
-                
+
                 if (data) setLogs(data);
                 if (error) console.error('Error fetching logs:', error);
             } catch (err) {
@@ -117,10 +118,10 @@ export default function LogsViewer() {
     const confirmDelete = async () => {
         setConfirmState(prev => ({ ...prev, isOpen: false })); // Cerrar dialog
         const toastId = toast.loading('Eliminando registros...');
-        
+
         try {
             const supabase = createClient();
-            
+
             if (confirmState.type === 'bulk') {
                 const { error } = await supabase
                     .from('audit_logs')
@@ -149,19 +150,27 @@ export default function LogsViewer() {
         }
     };
 
+    // Preparar opciones para SelectInput de usuarios
+    const userOptions = [
+        { value: 'all', label: 'Todos los usuarios' },
+        ...users.map(u => ({
+            value: u.id,
+            label: u.full_name ? `${u.full_name} (${u.email})` : u.email
+        }))
+    ];
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Logs de Auditoría</h2>
-                
+
                 {/* Botón de Borrado Global (Siempre visible) */}
-                <button 
+                <button
                     onClick={() => handleDeleteRequest('bulk')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-                        selectedIds.size > 0 
-                            ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20' 
-                            : 'bg-red-500/10 text-red-500 cursor-not-allowed border border-red-500/10'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${selectedIds.size > 0
+                        ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
+                        : 'bg-red-500/10 text-red-500 cursor-not-allowed border border-red-500/10'
+                        }`}
                 >
                     <Trash2 size={18} />
                     <span>Eliminar {selectedIds.size > 0 ? `(${selectedIds.size})` : 'Selección'}</span>
@@ -174,18 +183,14 @@ export default function LogsViewer() {
                     {/* Fila 1: Criterios */}
                     <div className="space-y-1">
                         <label className="text-xs font-medium text-foreground/50 ml-1 uppercase tracking-wider">Usuario</label>
-                        <select
+                        <SelectInput
                             value={selectedUser}
-                            onChange={(e) => setSelectedUser(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl focus:border-primary outline-none transition-colors"
-                        >
-                            <option value="all">Todos los usuarios</option>
-                            {users.map(u => (
-                                <option key={u.id} value={u.id}>
-                                    {u.full_name ? `${u.full_name} (${u.email})` : u.email}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={setSelectedUser}
+                            options={userOptions}
+                            placeholder="Todos los usuarios"
+                            isClearable={false}
+                            isSearchable={true}
+                        />
                     </div>
 
                     <div className="space-y-1">
@@ -203,8 +208,8 @@ export default function LogsViewer() {
                     {/* Fila 2: Fechas */}
                     <div className="space-y-1">
                         <label className="text-xs font-medium text-foreground/50 ml-1 uppercase tracking-wider">Desde</label>
-                        <input 
-                            type="date" 
+                        <input
+                            type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                             className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl focus:border-primary outline-none transition-colors"
@@ -213,8 +218,8 @@ export default function LogsViewer() {
 
                     <div className="space-y-1">
                         <label className="text-xs font-medium text-foreground/50 ml-1 uppercase tracking-wider">Hasta</label>
-                        <input 
-                            type="date" 
+                        <input
+                            type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                             className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl focus:border-primary outline-none transition-colors"
@@ -237,8 +242,8 @@ export default function LogsViewer() {
                                 <thead className="bg-white/5 font-medium text-foreground/70">
                                     <tr>
                                         <th className="p-4 w-10 text-center">
-                                            <input 
-                                                type="checkbox" 
+                                            <input
+                                                type="checkbox"
                                                 checked={selectedIds.size === logs.length && logs.length > 0}
                                                 onChange={toggleSelectAll}
                                                 className="w-4 h-4 rounded border-white/20 bg-white/5 cursor-pointer accent-primary"
@@ -255,8 +260,8 @@ export default function LogsViewer() {
                                     {logs.map(log => (
                                         <tr key={log.id} className={`hover:bg-white/5 transition group ${selectedIds.has(log.id) ? 'bg-primary/5' : ''}`}>
                                             <td className="p-4 text-center">
-                                                <input 
-                                                    type="checkbox" 
+                                                <input
+                                                    type="checkbox"
                                                     checked={selectedIds.has(log.id)}
                                                     onChange={() => toggleSelectOne(log.id)}
                                                     className="w-4 h-4 rounded border-white/20 bg-white/5 cursor-pointer accent-primary"
@@ -271,12 +276,11 @@ export default function LogsViewer() {
                                                 </div>
                                             </td>
                                             <td className="p-4">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-bold tracking-wide uppercase ${
-                                                    log.action_type === 'DELETE' ? 'bg-red-500/20 text-red-400' :
+                                                <span className={`px-2 py-1 rounded text-[10px] font-bold tracking-wide uppercase ${log.action_type === 'DELETE' ? 'bg-red-500/20 text-red-400' :
                                                     log.action_type === 'LOGIN' ? 'bg-green-500/20 text-green-400' :
-                                                    log.action_type === 'LOGOUT' ? 'bg-orange-500/20 text-orange-400' :
-                                                    'bg-blue-500/20 text-blue-400'
-                                                }`}>
+                                                        log.action_type === 'LOGOUT' ? 'bg-orange-500/20 text-orange-400' :
+                                                            'bg-blue-500/20 text-blue-400'
+                                                    }`}>
                                                     {log.action_type}
                                                 </span>
                                             </td>
@@ -284,7 +288,7 @@ export default function LogsViewer() {
                                                 {log.action_description}
                                             </td>
                                             <td className="p-4 text-right">
-                                                <button 
+                                                <button
                                                     onClick={() => handleDeleteRequest('single', log.id)}
                                                     className="p-2 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
                                                     title="Eliminar log"
@@ -301,11 +305,11 @@ export default function LogsViewer() {
             </div>
 
             {/* Dialogo de Confirmación */}
-            <ConfirmDialog 
+            <ConfirmDialog
                 isOpen={confirmState.isOpen}
                 type="error"
                 title={confirmState.type === 'bulk' ? 'Eliminar Logs' : 'Eliminar Log'}
-                message={confirmState.type === 'bulk' 
+                message={confirmState.type === 'bulk'
                     ? `¿Estás seguro de que quieres eliminar permanentemente los ${selectedIds.size} logs seleccionados?`
                     : '¿Estás seguro de que quieres eliminar este registro de auditoría?'
                 }

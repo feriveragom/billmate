@@ -1,5 +1,5 @@
 
-export type RoleType = 'GUEST' | 'FREE_USER' | 'PREMIUM_USER' | 'MERCHANT' | 'SUPPORT_AGENT' | 'SUPER_ADMIN';
+export type RoleType = 'FREE_USER' | 'PREMIUM_USER' | 'ADMIN' | 'SUPER_ADMIN';
 
 export interface Permission {
     id: string;

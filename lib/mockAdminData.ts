@@ -12,6 +12,9 @@ export const mockPermissions: Permission[] = [
     { id: 'p6', code: 'admin.users.manage', description: 'Gestionar usuarios (ban/promover)', module: 'ADMIN' },
     { id: 'p7', code: 'admin.roles.manage', description: 'Gestionar roles y permisos', module: 'ADMIN' },
     { id: 'p8', code: 'admin.logs.view', description: 'Ver logs de auditoría', module: 'ADMIN' },
+
+    // PREMIUM
+    { id: 'p9', code: 'premium.features', description: 'Acceso a funciones premium', module: 'CORE' },
 ];
 
 export const mockRoles: Role[] = [
@@ -19,24 +22,32 @@ export const mockRoles: Role[] = [
         id: 'role-super-admin',
         name: 'SUPER_ADMIN',
         label: 'Super Administrador',
-        description: 'Acceso total al sistema',
-        permissions: mockPermissions.map(p => p.code), // Todos
+        description: 'Control total del sistema y gestión de admins',
+        permissions: mockPermissions.map(p => p.code),
+        isSystemRole: true
+    },
+    {
+        id: 'role-admin',
+        name: 'ADMIN',
+        label: 'Administrador',
+        description: 'Gestión de usuarios y soporte',
+        permissions: mockPermissions.map(p => p.code), // Todos los permisos igual que SUPER_ADMIN
+        isSystemRole: true
+    },
+    {
+        id: 'role-premium',
+        name: 'PREMIUM_USER',
+        label: 'Usuario Premium',
+        description: 'Acceso ilimitado a funcionalidades avanzadas',
+        permissions: ['service.create', 'service.view', 'service.edit', 'service.delete', 'premium.features'],
         isSystemRole: true
     },
     {
         id: 'role-free',
         name: 'FREE_USER',
         label: 'Usuario Gratuito',
-        description: 'Acceso estándar con límites',
+        description: 'Acceso estándar con límites de uso',
         permissions: ['service.create', 'service.view', 'service.edit', 'service.delete'],
-        isSystemRole: true
-    },
-    {
-        id: 'role-guest',
-        name: 'GUEST',
-        label: 'Invitado',
-        description: 'Acceso solo lectura pública',
-        permissions: [],
         isSystemRole: true
     }
 ];
