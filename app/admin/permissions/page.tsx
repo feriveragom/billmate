@@ -1,4 +1,4 @@
-import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
+import ProtectedRoute from '@/core/auth/protected-route';
 import PermissionsTable from '@/components/features/admin/PermissionsTable';
 
 export default function PermissionsPage() {

@@ -1,5 +1,5 @@
 import RolesGrid from '@/components/features/admin/RolesGrid';
-import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
+import ProtectedRoute from '@/core/auth/protected-route';
 
 export default function AdminRolesPage() {
     return (

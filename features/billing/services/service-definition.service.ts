@@ -1,7 +1,7 @@
-import { ServiceDefinition } from '../../domain/entities';
-import { IServiceDefinitionRepository } from '../../domain/repositories';
+import { ServiceDefinition } from '@/core/domain/entities';
+import { IServiceDefinitionRepository } from '@/core/domain/repositories';
 
-export class ServiceDefinitionUseCases {
+export class ServiceDefinitionService {
     constructor(private repository: IServiceDefinitionRepository) { }
 
     async getAll(): Promise<ServiceDefinition[]> {
@@ -25,3 +25,4 @@ export class ServiceDefinitionUseCases {
         await this.repository.delete(id);
     }
 }
+

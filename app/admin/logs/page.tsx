@@ -1,5 +1,5 @@
 import LogsViewer from '@/components/features/admin/LogsViewer';
-import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
+import ProtectedRoute from '@/core/auth/protected-route';
 
 export default function AdminLogsPage() {
     return (

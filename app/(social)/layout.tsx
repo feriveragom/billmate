@@ -4,7 +4,7 @@ import { useState } from 'react';
 import TopHeader from '@/components/layout/TopHeader';
 import BottomNav from '@/components/layout/BottomNav';
 import MobileDrawer from '@/components/layout/MobileDrawer';
-import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
+import ProtectedRoute from '@/core/auth/protected-route';
 
 export default function SocialLayout({ children }: { children: React.ReactNode }) {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);

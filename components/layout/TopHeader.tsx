@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Bell, Search, Moon, Sun, Archive, List } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import Link from 'next/link';
-import UserMenu from '@/components/features/auth/UserMenu';
+import UserMenu from '@/features/auth/components/user-menu';
 
 export default function TopHeader({ onDashboardClick }: { onDashboardClick?: () => void }) {
     const { notifications, archivedActivities, theme, toggleTheme, toggleArchivedView, showArchivedView } = useApp();

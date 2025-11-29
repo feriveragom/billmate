@@ -1,6 +1,6 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/components/features/auth/AuthProvider";
+import { AuthProvider } from "@/core/auth/auth-provider";
 import { AppProvider } from "@/lib/store";
 import { Toaster } from 'sonner';
 

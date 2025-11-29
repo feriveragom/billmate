@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 import { Ban, ShieldAlert, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 

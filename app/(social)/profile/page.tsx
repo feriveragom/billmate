@@ -1,7 +1,7 @@
 'use client';
 
-import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
-import UserProfile from '@/components/features/auth/UserProfile';
+import ProtectedRoute from '@/core/auth/protected-route';
+import UserProfile from '@/features/users/components/user-profile';
 
 export default function ProfilePage() {
     return (

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ServiceInstance, Activity, ServiceDefinition } from '../core/domain/entities';
-import { useAuth } from '../components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 
 // Re-export types for convenience
 export type { ServiceInstance, Activity, ServiceDefinition, ServiceStatus } from '../core/domain/entities';
@@ -49,7 +49,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Load Initial Data - TODO: Connect to Real Repositories
     useEffect(() => {
         const loadData = async () => {
-            if (!user) return; 
+            if (!user) return;
             console.log("Store: Loading data placeholder");
             // TODO: Implement fetching from real repositories
         };

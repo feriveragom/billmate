@@ -1,7 +1,7 @@
 'use client';
 
 import UsersTable from '@/components/features/admin/UsersTable';
-import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
+import ProtectedRoute from '@/core/auth/protected-route';
 
 export default function AdminUsersPage() {
     return (

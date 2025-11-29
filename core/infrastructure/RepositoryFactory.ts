@@ -2,11 +2,17 @@ import { IUserRepository } from '@/core/domain/repositories/IUserRepository';
 import { IRoleRepository } from '@/core/domain/repositories/IRoleRepository';
 import { IPermissionRepository } from '@/core/domain/repositories/IPermissionRepository';
 import { IAuditLogRepository } from '@/core/domain/repositories/IAuditLogRepository';
+import { IServiceDefinitionRepository } from '@/core/domain/repositories/IServiceDefinitionRepository';
+import { IServiceInstanceRepository } from '@/core/domain/repositories/IServiceInstanceRepository';
+import { IActivityRepository } from '@/core/domain/repositories/IActivityRepository';
 
 import { FirebaseUserRepository } from './repositories/FirebaseUserRepository';
 import { FirebaseRoleRepository } from './repositories/FirebaseRoleRepository';
 import { FirebasePermissionRepository } from './repositories/FirebasePermissionRepository';
 import { FirebaseAuditLogRepository } from './repositories/FirebaseAuditLogRepository';
+import { FirebaseServiceDefinitionRepository } from './repositories/FirebaseServiceDefinitionRepository';
+import { FirebaseServiceInstanceRepository } from './repositories/FirebaseServiceInstanceRepository';
+import { FirebaseActivityRepository } from './repositories/FirebaseActivityRepository';
 
 /**
  * Factory Pattern para crear instancias de repositorios.
@@ -22,6 +28,9 @@ class RepositoryFactory {
     private static roleRepository: IRoleRepository;
     private static permissionRepository: IPermissionRepository;
     private static auditLogRepository: IAuditLogRepository;
+    private static serviceDefinitionRepository: IServiceDefinitionRepository;
+    private static serviceInstanceRepository: IServiceInstanceRepository;
+    private static activityRepository: IActivityRepository;
 
     static getUserRepository(): IUserRepository {
         if (!this.userRepository) {
@@ -50,6 +59,28 @@ class RepositoryFactory {
         }
         return this.auditLogRepository;
     }
+
+    static getServiceDefinitionRepository(): IServiceDefinitionRepository {
+        if (!this.serviceDefinitionRepository) {
+            this.serviceDefinitionRepository = new FirebaseServiceDefinitionRepository();
+        }
+        return this.serviceDefinitionRepository;
+    }
+
+    static getServiceInstanceRepository(): IServiceInstanceRepository {
+        if (!this.serviceInstanceRepository) {
+            this.serviceInstanceRepository = new FirebaseServiceInstanceRepository();
+        }
+        return this.serviceInstanceRepository;
+    }
+
+    static getActivityRepository(): IActivityRepository {
+        if (!this.activityRepository) {
+            this.activityRepository = new FirebaseActivityRepository();
+        }
+        return this.activityRepository;
+    }
 }
 
 export default RepositoryFactory;
+

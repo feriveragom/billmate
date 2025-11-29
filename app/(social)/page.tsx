@@ -1,7 +1,7 @@
 'use client';
 
-import ServiceDefinitions from '@/components/features/services/ServiceDefinitions';
-import ServiceInstances from '@/components/features/billing/ServiceInstances';
+import ServiceDefinitions from '@/features/billing/components/ServiceDefinitions';
+import ServiceInstances from '@/features/billing/components/ServiceInstances';
 import ActivityFeed from '@/components/features/dashboard/ActivityFeed';
 import DashboardPanel from '@/components/features/dashboard/DashboardPanel';
 import UpcomingPanel from '@/components/features/dashboard/UpcomingPanel';

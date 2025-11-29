@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 // import { mockRoles, mockPermissions } from '@/lib/mockAdminData';
 import { Shield, Mail, User as UserIcon, CheckCircle, Key } from 'lucide-react';
 

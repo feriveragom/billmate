@@ -14,10 +14,10 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ServiceDefinition, ServiceInstance } from '@/lib/types';
-import Modal from '../../ui/Modal';
+import Modal from '@/components/ui/Modal';
 import ServiceDefinitionForm from './ServiceDefinitionForm';
-import ServiceInstanceForm from '../billing/ServiceInstanceForm';
-import ConfirmDialog from '../../ui/ConfirmDialog';
+import ServiceInstanceForm from './ServiceInstanceForm';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 

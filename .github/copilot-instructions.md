@@ -1,67 +1,109 @@
-# ADR: Registro de Decisiones de Arquitectura y Reglas de Proyecto
+# BillMate: Arquitectura, Estándares y Patrones
 
-Este documento define la "verdad única" sobre la arquitectura, patrones y estándares de código de BillMate. **Toda generación de código futura debe adherirse estrictamente a estas directrices.**
+> **Fuente Única de Verdad**: Este documento define las reglas arquitectónicas no negociables para BillMate.
+> **Objetivo**: Codebase escalable, mantenible y testeable usando Clean Architecture.
 
-## 1. Filosofía de Arquitectura
-Adoptamos una **Arquitectura Híbrida (Feature-based + Layered)** para equilibrar la organización por capas técnicas con la cohesión por dominio de negocio. Esto evita el "Spaghetti Code" y facilita la escalabilidad modular.
+---
 
-### 1.1 Estructura de Carpetas
-*   **`components/ui/`**: (Atomic Design) Componentes base, visuales y agnósticos al negocio. "Tontos" y altamente reutilizables.
-    *   *Ejemplos:* `Button`, `Modal`, `Card`, `Input`.
-*   **`components/layout/`**: Estructura macro de la aplicación.
-    *   *Ejemplos:* `TopHeader`, `BottomNav`, `Sidebar`.
-*   **Route Groups:** Usar carpetas `(nombre)` para separar layouts distintos (ej: `(auth)`, `(social)`, `(admin)`).
-*   **`components/features/[dominio]/`**: Componentes "inteligentes" conectados al estado y lógica de negocio, agrupados por funcionalidad.
-    *   **`dashboard/`**: Widgets de resumen, feeds de actividad.
-    *   **`services/`**: Gestión de Definiciones (Tipos de gasto).
-    *   **`billing/`**: Gestión de Instancias (Pagos reales), formularios de pago.
-    *   **`auth/`**: Login, Perfil, ProtectedRoute. (Lógica de Auth en `lib/firebase/` y `middleware.ts`).
-*   **`lib/`**: Utilidades transversales, Store global (Zustand/Context), Tipos TypeScript y constantes.
-    *   **`firebase/`**: Clientes tipados (`client.ts`, `server.ts`) para interactuar con Firebase Auth y Firestore.
+## 1. Filosofía Central
 
-### 1.2 Estrategia de Despliegue (Web + APK)
-*   **Objetivo Dual:** El proyecto funcionará como Web App y como **APK nativa para Android** (vía TWA/Capacitor).
-*   **Compatibilidad Obligatoria:** Todo componente, librería o lógica debe ser compatible con entornos móviles híbridos (WebView).
-*   **Restricciones:**
-    *   No depender de APIs exclusivas de escritorio.
-    *   Diseñar interacciones táctiles nativas (Swipe, Long Press).
-    *   Optimizar para rendimiento en dispositivos de gama media (batería/memoria).
+1.  **Clean Architecture**: Las dependencias DEBEN apuntar hacia adentro. La capa **Domain** no sabe nada de la Base de Datos o la UI.
+2.  **Mobile-First**: Toda la UI DEBE ser diseñada para móviles (320px+) primero, y luego adaptada para pantallas más grandes. Usan Tailwind mobile-first classes (`sm:`, `md:`, `lg:`)
+3.  **Strict TypeScript**: Prohibido `any`. Todas las props, retornos y variables deben estar tipadas.
+4.  **Permission-Driven Security**: El acceso es controlado por permisos granulares (`users.delete`), NO por roles (`ADMIN`).
 
-## 2. Patrones de Diseño y Código
+---
 
-### 2.1 Clean Architecture y Patrón Repositorio (ESTRICTO)
-*   **Separación de Responsabilidades:**
-    *   **UI Components:** Solo renderizan datos y capturan eventos. No deben contener lógica compleja de negocio ni llamadas directas a APIs (usar Hooks/Store).
-    *   **Store/Hooks:** Manejan el estado y la lógica de negocio, pero NUNCA llaman a la base de datos directamente.
-    *   **Server Actions:** Orquestan la lógica de aplicación, pero DELEGAN el acceso a datos a los Repositorios.
-*   **Patrón Repositorio (OBLIGATORIO):**
-    *   **Regla de Oro:** NINGÚN archivo fuera de `core/infrastructure` puede importar clientes de base de datos (ej: `firebase/firestore`, `firebase/auth`).
-    *   **Interfaces:** Toda interacción con datos debe definirse primero como una interfaz en `core/domain/repositories` (ej: `IUserRepository`).
-    *   **Implementación:** Las implementaciones concretas (ej: `FirebaseUserRepository`) residen en `core/infrastructure/repositories`.
-    *   **Inyección:** Usar un `RepositoryFactory` o inyección de dependencias para obtener las instancias. Esto permite cambiar de proveedor tocando UN solo archivo.
-    *   **Prohibido:** Usar `getFirestore()` o `collection()` directamente en componentes o Server Actions.
+## 2. Capas Arquitectónicas
 
-### 2.2 Seguridad y Control de Acceso (NUEVO - Permission-Driven)
-*   **Modelo RBAC Estricto:** El sistema utiliza un modelo de **Control de Acceso Basado en Permisos**.
-*   **Regla de Oro:** NUNCA proteger rutas o componentes preguntando por el "Rol" del usuario (ej: `if role == 'ADMIN'`). SIEMPRE preguntar por la "Capacidad" (ej: `if checkPermission('users.delete')`).
-*   **Roles:** Son meros contenedores de permisos. Los roles pueden ser dinámicos, pero los permisos son las llaves atómicas del sistema.
-*   **Implementación:**
-    *   Usar `<ProtectedRoute requiredPermission="scope.action" />` para páginas enteras.
-    *   Usar `const { checkPermission } = useAuth()` para renderizado condicional de botones o secciones.
+### 2.1 Definición de Capas
 
-### 2.3 Estilizado y UX
-*   **Mobile-First Estricto:** Diseñar siempre pensando primero en pantallas pequeñas (320px). Usar clases `md:`, `lg:` para escalar a desktop.
-*   **Tailwind CSS:** Herramienta principal de estilos. Evitar CSS inline o archivos `.css` separados salvo para configuraciones globales.
-*   **Estética Premium:** Mantener el lenguaje visual de "Glassmorphism", gradientes sutiles y micro-interacciones.
+| Capa | Responsabilidad | Imports Permitidos | Ejemplos |
+|------|-----------------|--------------------|----------|
+| **Domain** (Core) | Entidades de Negocio, Reglas, **Repository Interfaces**. TypeScript puro. | Ninguno (Nodo hoja) | `User`, `IUserRepository` |
+| **Application** | **Services**, Casos de Uso, DTOs (Zod). Orquesta la lógica. | Domain, Shared Libs | `UserService`, `CreateUserSchema` |
+| **Infrastructure** | **Repository Implementations**, APIs Externas (Firebase), Adaptadores. | Domain, Application | `FirebaseUserRepository` |
+| **Presentation** | **UI Components**, **Server Actions**, Pages. | Application, Domain, UI Libs | `UserProfile`, `actions.ts` |
 
-### 2.4 TypeScript
-*   **Tipado Fuerte:** No usar `any`. Definir interfaces claras en `lib/types.ts` para modelos de datos (ej: `ServiceInstance`, `ServiceDefinition`).
-*   **Interfaces Explícitas:** Props de componentes deben estar tipadas.
+### 2.2 Regla de Dependencia (CRÍTICO)
+`Presentation` -> `Application` -> `Domain` <- `Infrastructure`
 
-## 3. Reglas para el Asistente (IA)
-1.  **Contexto Primero:** Antes de sugerir código, verifica en qué capa de la arquitectura estás trabajando (`ui`, `feature`, `lib`).
-2.  **No Romper la Estructura:** Si se pide una nueva funcionalidad, crea las carpetas necesarias en `features/` en lugar de tirar archivos en la raíz de `components/`.
-3.  **Importaciones:** Usar siempre alias absolutos (`@/components/...`) en lugar de rutas relativas largas (`../../../`).
-4.  **Refactorización Proactiva:** Si detectas código duplicado o componentes gigantes, sugiere dividirlo siguiendo estos patrones.
-5.  **Verificación de Entorno:** Antes de pedir credenciales o configuración, verifica si existen archivos como `.env.local` o `tailwind.config.ts`. Asume que la configuración existe si el archivo está presente.
-6.  **Seguridad por Permisos:** Al generar nuevas vistas o acciones sensibles, SIEMPRE sugerir el permiso asociado y cómo protegerlo usando `checkPermission`.
+- **UI** NUNCA importa **Infrastructure**.
+- **Domain** NUNCA importa **Infrastructure** o **Presentation**.
+- **Infrastructure** implementa interfaces definidas en **Domain**.
+- **Aclaración**: Infrastructure depende de Domain (implementa sus interfaces), pero Domain NO depende de Infrastructure.
+
+---
+
+## 3. Patrones de Diseño Clave
+
+### 3.1 Repository Pattern
+Desacopla la aplicación de la fuente de datos.
+- **Interface**: Definida en Domain (`core/domain/repositories/IUserRepository.ts`).
+- **Implementation**: Definida en Infrastructure (`core/infrastructure/repositories/FirebaseUserRepository.ts`).
+- **Uso**: Los **Services** dependen de la *Interface*, inyectada vía Dependency Injection o Factory.
+
+### 3.2 Service Layer
+Encapsula toda la lógica de negocio.
+- **Ubicación**: `features/[feature]/services/`.
+- **Responsabilidad**: Validación, orquestación, llamadas a repositorios.
+- **Regla**: Los **Server Actions** DEBEN llamar a **Services**, nunca a Repositorios directamente.
+
+### 3.3 DTO (Data Transfer Object) & Validation
+Asegura type safety e integridad de datos.
+- **Herramienta**: **Zod**.
+- **Uso**: Todos los inputs a **Server Actions** y **Services** deben ser validados con esquemas de Zod.
+- **Ubicación**: `features/[feature]/schemas.ts`.
+
+### 3.4 Permission-Driven RBAC
+- **Concepto**: Los usuarios tienen Roles; Los Roles tienen Permisos. El código verifica Permisos.
+- **Patrón**: `if (user.hasPermission('invoices.pay'))` ✅
+- **Anti-Patrón**: `if (user.role === 'ADMIN')` ❌
+
+---
+
+## 4. Estructura del Proyecto (Feature-Based)
+
+Usamos una estructura **Feature-Based** para mantener el código relacionado junto.
+
+```text
+/
+├── app/                        # Next.js App Router (Solo Rutas y Layouts)
+├── components/                 # UI Components Compartidos (Puros, Tontos)
+│   └── ui/                     # Elementos de diseño atómico (Button, Input)
+├── core/                       # Shared Kernel (Intereses transversales)
+│   ├── domain/                 # Entidades Globales e Interfaces de Repositorio
+│   ├── infrastructure/         # Implementaciones Globales (Cliente Firebase)
+│   └── auth/                   # Lógica de Permisos
+├── features/                   # Módulos de Features (El grueso del código)
+│   ├── [feature_name]/         # ej., "billing", "users"
+│   │   ├── components/         # UI específica del Feature
+│   │   ├── services/           # Lógica de Negocio
+│   │   ├── actions.ts          # Server Actions (Puntos de entrada)
+│   │   ├── schemas.ts          # Zod Schemas (DTOs)
+│   │   └── types.ts            # Tipos específicos del Feature
+│   └── ...
+└── lib/                        # Utilidades Compartidas (Funciones sin estado)
+```
+
+---
+
+## 5. Anti-Patterns (PROHIBIDO)
+
+1.  ❌ **God Components**: Componentes > 200 líneas. Divídelos.
+2.  ❌ **Logic in UI**: Los componentes solo deben renderizar datos. La lógica va a **Services/Hooks**.
+3.  ❌ **Direct DB Access in UI**: Nunca llamar a Firebase/DB desde un **Client Component**. Usa **Server Actions**.
+4.  ❌ **Hardcoded Strings**: Usa constantes o archivos de localización.
+5.  ❌ **Prop Drilling**: Usa Composición o Zustand para estado global.
+6.  ❌ **Ignoring Mobile**: diseñar para escritorio y "arreglar" para móvil después.
+
+---
+
+## 6. Flujo de Trabajo de Desarrollo
+
+1.  **Define Interface**: Empieza definiendo el contrato de datos en `core/domain`.
+2.  **Implement Infrastructure**: Crea la implementación de Firebase en `core/infrastructure`.
+3.  **Create Service**: Escribe la lógica de negocio en `features/[feature]/services`.
+4.  **Define DTO**: Crea esquemas Zod para validación.
+5.  **Build UI**: Crea componentes que consuman el **Service** vía **Server Actions**.
+6.  **Documentation**: Solo a solicitud del programador, no documentar por defecto.

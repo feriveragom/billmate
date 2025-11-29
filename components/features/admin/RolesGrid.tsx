@@ -5,7 +5,7 @@ import { Shield, Lock, Check, X, Edit2, Plus, Trash2, ArrowUpDown, ArrowUp, Arro
 import RoleFormModal from './RoleFormModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Role, Permission } from '@/core/domain/entities';
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 import { getRolesWithPermissions, getPermissions, deleteRole } from '@/app/admin/roles/actions';
 import { toast } from 'sonner';
 import {

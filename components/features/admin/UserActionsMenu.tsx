@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 import { MoreVertical, Shield, FileText, Ban, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 
 interface UserActionsMenuProps {
     user: any;

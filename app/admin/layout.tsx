@@ -1,11 +1,11 @@
 'use client';
 
-import ProtectedRoute from '@/components/features/auth/ProtectedRoute';
+import ProtectedRoute from '@/core/auth/protected-route';
 import { Users, Shield, FileText, ShieldAlert, Key } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import TopHeader from '@/components/layout/TopHeader';
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();

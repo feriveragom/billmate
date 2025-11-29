@@ -6,7 +6,7 @@ import PermissionFormModal from './PermissionFormModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Permission } from '@/core/domain/entities';
 import { toast } from 'sonner';
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 import { getPermissions } from '@/app/admin/roles/actions';
 import SelectInput from '@/components/ui/SelectInput';
 import {

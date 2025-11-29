@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, User, Shield, LogOut, Home } from 'lucide-react';
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 

@@ -18,10 +18,10 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { ServiceInstance, ServiceStatus } from '@/lib/types';
-import Modal from '../../ui/Modal';
+import Modal from '@/components/ui/Modal';
 import ServiceInstanceForm from './ServiceInstanceForm';
 import ServiceInstanceDetails from './ServiceInstanceDetails';
-import ConfirmDialog from '../../ui/ConfirmDialog';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/components/features/auth/AuthProvider';
+import { useAuth } from '@/core/auth/auth-provider';
 import { useRouter } from 'next/navigation';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen w-full flex flex-col lg:flex-row bg-background relative overflow-hidden">
-            
+
             {/* Columna Izquierda: Visual / Branding (Desktop) */}
             <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-primary-dark via-primary to-accent items-center justify-center p-12 overflow-hidden">
                 {/* Círculos decorativos animados */}
@@ -43,7 +43,7 @@ export default function LoginPage() {
                             Tu sistema operativo financiero personal.
                         </h1>
                     </div>
-                    
+
                     <div className="space-y-4">
                         <FeatureItem text="Centraliza todos tus pagos en un solo lugar" />
                         <FeatureItem text="Recordatorios inteligentes para no pagar tarde" />
@@ -64,7 +64,7 @@ export default function LoginPage() {
                         <div className="inline-block p-4 rounded-3xl bg-primary/5 mb-2">
                             <img src="/logo.png" alt="BillMate Logo" className="w-20 h-20 object-contain" />
                         </div>
-                        
+
                         <div className="space-y-2">
                             <h2 className="text-3xl font-bold tracking-tight">Iniciar Sesión</h2>
                             <p className="text-foreground/60">

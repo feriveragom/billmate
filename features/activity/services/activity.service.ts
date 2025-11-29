@@ -1,7 +1,7 @@
-import { Activity } from '../../domain/entities';
-import { IActivityRepository } from '../../domain/repositories';
+import { Activity } from '@/core/domain/entities';
+import { IActivityRepository } from '@/core/domain/repositories';
 
-export class ActivityUseCases {
+export class ActivityService {
     constructor(private repository: IActivityRepository) { }
 
     async getAll(): Promise<Activity[]> {
@@ -20,3 +20,4 @@ export class ActivityUseCases {
         await this.repository.unarchive(id);
     }
 }
+

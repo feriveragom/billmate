@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './auth-provider';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children, requiredPermission }: Protect
             // 1. No autenticado -> Login
             if (!user) {
                 console.warn("⛔ [Protect] No user found. Redirecting to login.");
-                router.replace('/login'); 
+                router.replace('/login');
                 return;
             }
 
