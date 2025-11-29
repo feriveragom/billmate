@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import Modal from '@/components/ui/Modal';
 import { toast } from 'sonner';
-
 import type { Permission } from '@/core/domain/entities';
+import { createPermission, updatePermission } from '@/app/admin/roles/actions';
 
 interface PermissionFormModalProps {
     isOpen: boolean;
@@ -14,9 +13,9 @@ interface PermissionFormModalProps {
     initialData?: Permission | null;
 }
 
-export default function PermissionFormModal({ 
-    isOpen, 
-    onClose, 
+export default function PermissionFormModal({
+    isOpen,
+    onClose,
     onSuccess,
     initialData
 }: PermissionFormModalProps) {
@@ -52,46 +51,33 @@ export default function PermissionFormModal({
         setIsSubmitting(true);
 
         try {
-            const supabase = createClient();
-
             // Validación básica de código
             if (!/^[a-z0-9.]+$/.test(formData.code)) {
                 throw new Error('El código solo puede contener minúsculas, números y puntos (ej: service.create)');
             }
 
-            let error;
-
             if (initialData) {
                 // Update
-                const { error: updateError } = await supabase
-                    .from('permissions')
-                    .update({
-                        // Code no se edita normalmente, pero si quieres permitirlo quita el comentario
-                        // code: formData.code, 
-                        description: formData.description,
-                        module: formData.module
-                    })
-                    .eq('id', initialData.id);
-                error = updateError;
+                const result = await updatePermission(initialData.id, {
+                    description: formData.description,
+                    module: formData.module
+                });
+
+                if (!result.success) throw new Error(result.error);
+                toast.success('Permiso actualizado correctamente');
             } else {
                 // Insert
-                const { error: insertError } = await supabase
-                    .from('permissions')
-                    .insert({
-                        code: formData.code,
-                        description: formData.description,
-                        module: formData.module
-                    });
-                error = insertError;
-            }
+                const result = await createPermission({
+                    code: formData.code,
+                    description: formData.description,
+                    module: formData.module
+                });
 
-            if (error) throw error;
-
-            toast.success(initialData ? 'Permiso actualizado correctamente' : 'Permiso creado correctamente');
-            if (!initialData) {
+                if (!result.success) throw new Error(result.error);
+                toast.success('Permiso creado correctamente');
                 toast.info('Se ha asignado automáticamente a Super Admin y Admin');
             }
-            
+
             onSuccess();
             onClose();
 
@@ -118,7 +104,7 @@ export default function PermissionFormModal({
                             required
                             disabled={!!initialData} // No editar código una vez creado para evitar romper referencias
                             value={formData.code}
-                            onChange={e => setFormData({...formData, code: e.target.value.toLowerCase()})}
+                            onChange={e => setFormData({ ...formData, code: e.target.value.toLowerCase() })}
                             placeholder="ej: reports.view"
                             className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                         />
@@ -133,7 +119,7 @@ export default function PermissionFormModal({
                             type="text"
                             required
                             value={formData.description}
-                            onChange={e => setFormData({...formData, description: e.target.value})}
+                            onChange={e => setFormData({ ...formData, description: e.target.value })}
                             placeholder="ej: Ver reportes financieros"
                             className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50"
                         />
@@ -143,7 +129,7 @@ export default function PermissionFormModal({
                         <label className="block text-sm font-medium mb-1 text-foreground/80">Módulo</label>
                         <select
                             value={formData.module}
-                            onChange={e => setFormData({...formData, module: e.target.value as any})}
+                            onChange={e => setFormData({ ...formData, module: e.target.value as any })}
                             className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50"
                         >
                             <option value="CORE">CORE (Funcionalidad Principal)</option>

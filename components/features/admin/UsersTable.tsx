@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Search, Ban, CheckCircle, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import UserActionsMenu from './UserActionsMenu';
 import SelectInput from '@/components/ui/SelectInput';
+import { getAdminUsers, toggleUserStatus, updateUserRole } from '@/app/admin/users/actions';
 
 export default function UsersTable() {
     const [users, setUsers] = useState<any[]>([]);
@@ -18,21 +18,15 @@ export default function UsersTable() {
     const [newRole, setNewRole] = useState<string>('');
     const [isSavingRole, setIsSavingRole] = useState(false);
 
-    const [supabase] = useState(() => createClient());
-
     const fetchUsers = async () => {
         setIsLoading(true);
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const result = await getAdminUsers();
 
-        if (data) {
-            setUsers(data);
-        }
-        if (error) {
-            console.error('❌ [UsersTable] Error fetching users:', error);
-            toast.error('Error cargando usuarios. ¿Ejecutaste la migración?');
+        if (result.success && result.data) {
+            setUsers(result.data);
+        } else {
+            console.error('❌ [UsersTable] Error fetching users:', result.error);
+            toast.error('Error cargando usuarios: ' + result.error);
         }
         setIsLoading(false);
     };
@@ -49,18 +43,15 @@ export default function UsersTable() {
         setActiveMenuId(null);
 
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ is_active: newStatus })
-                .eq('id', user.id);
+            const result = await toggleUserStatus(user.id, newStatus);
 
-            if (error) throw error;
+            if (!result.success) throw new Error(result.error);
 
             setUsers(users.map(u => u.id === user.id ? { ...u, is_active: newStatus } : u));
             toast.success(`Usuario ${action}do exitosamente`, { id: toastId });
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            toast.error(`Error al ${action} usuario`, { id: toastId });
+            toast.error(`Error al ${action} usuario: ${err.message}`, { id: toastId });
         }
     };
 
@@ -69,19 +60,16 @@ export default function UsersTable() {
 
         setIsSavingRole(true);
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ role: newRole })
-                .eq('id', editingUser.id);
+            const result = await updateUserRole(editingUser.id, newRole);
 
-            if (error) throw error;
+            if (!result.success) throw new Error(result.error);
 
             setUsers(users.map(u => u.id === editingUser.id ? { ...u, role: newRole } : u));
             toast.success(`Rol actualizado a ${newRole}`);
             setEditingUser(null);
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            toast.error('Error actualizando rol');
+            toast.error(`Error actualizando rol: ${err.message}`);
         } finally {
             setIsSavingRole(false);
         }

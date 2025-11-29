@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Shield, Lock, Check, X, Edit2, Plus, Key } from 'lucide-react';
 import RoleFormModal from './RoleFormModal';
 import PermissionFormModal from './PermissionFormModal';
 import type { Role, Permission } from '@/core/domain/entities';
 import { useAuth } from '@/components/features/auth/AuthProvider';
+import { getRolesWithPermissions, getPermissions } from '@/app/admin/roles/actions';
 
 interface RoleWithPermissions extends Role {
     permission_codes: string[];
@@ -24,53 +24,20 @@ export default function RolesGrid() {
     const fetchRolesAndPermissions = useCallback(async () => {
         setIsLoading(true);
         try {
-            const supabase = createClient();
-
-            // Fetch all permissions
-            const { data: permsData } = await supabase
-                .from('permissions')
-                .select('*')
-                .order('module', { ascending: true });
-
-            if (permsData) {
-                setPermissions(permsData.map(p => ({
-                    id: p.id,
-                    code: p.code,
-                    description: p.description,
-                    module: p.module as any
-                })));
+            // Fetch permissions
+            const permsResult = await getPermissions();
+            if (permsResult.success && permsResult.data) {
+                setPermissions(permsResult.data);
+            } else {
+                console.error('Error fetching permissions:', permsResult.error);
             }
 
-            // Fetch all roles with their permissions
-            const { data: rolesData, error } = await supabase
-                .from('roles')
-                .select(`
-                    id,
-                    name,
-                    label,
-                    description,
-                    is_system_role,
-                    role_permissions (
-                        permissions (
-                            code
-                        )
-                    )
-                `)
-                .order('name', { ascending: true });
-
-            if (error) throw error;
-
-            if (rolesData) {
-                const formattedRoles: RoleWithPermissions[] = rolesData.map((r: any) => ({
-                    id: r.id,
-                    name: r.name,
-                    label: r.label,
-                    description: r.description,
-                    isSystemRole: r.is_system_role,
-                    permissions: r.role_permissions?.map((rp: any) => rp.permissions?.code).filter(Boolean) || [],
-                    permission_codes: r.role_permissions?.map((rp: any) => rp.permissions?.code).filter(Boolean) || []
-                }));
-                setRoles(formattedRoles);
+            // Fetch roles
+            const rolesResult = await getRolesWithPermissions();
+            if (rolesResult.success && rolesResult.data) {
+                setRoles(rolesResult.data);
+            } else {
+                console.error('Error fetching roles:', rolesResult.error);
             }
         } catch (err) {
             console.error('Error fetching roles and permissions:', err);
@@ -104,7 +71,7 @@ export default function RolesGrid() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Roles y Permisos</h2>
-                <button 
+                <button
                     onClick={handleCreateRole}
                     disabled={!canManageRoles}
                     className={`px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 transition flex items-center gap-2 ${!canManageRoles ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary/90'}`}
@@ -131,9 +98,9 @@ export default function RolesGrid() {
                         'FREE_USER': { bg: 'bg-white/5', text: 'text-foreground/70', border: 'border-white/10' }
                     };
 
-                    const colors = roleColors[role.name as keyof typeof roleColors] || 
-                                 { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' }; // Color default para nuevos roles
-                    
+                    const colors = roleColors[role.name as keyof typeof roleColors] ||
+                        { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' }; // Color default para nuevos roles
+
                     const isProtected = role.name === 'SUPER_ADMIN';
 
                     return (
@@ -158,7 +125,7 @@ export default function RolesGrid() {
                                     )}
                                 </div>
                             </div>
-                            
+
                             <h3 className="text-lg font-bold mb-1">{role.label}</h3>
                             <p className="text-sm text-foreground/60 mb-4 flex-grow min-h-[40px]">{role.description}</p>
 
@@ -183,7 +150,7 @@ export default function RolesGrid() {
             </div>
 
             {/* Modal de Edición/Creación de Rol */}
-            <RoleFormModal 
+            <RoleFormModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 initialData={selectedRole}

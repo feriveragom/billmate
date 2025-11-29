@@ -29,19 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
-    
+
     const [supabase] = useState(() => createClient());
 
     const logAuthEvent = async (action: 'LOGIN' | 'LOGOUT', userEmail: string, userId: string) => {
         try {
-            await supabase.rpc('log_audit_event', {
-                p_user_id: userId,
-                p_user_email: userEmail,
-                p_action_type: action,
-                p_action_category: 'AUTH',
-                p_action_description: action === 'LOGIN' ? 'Inicio de sesión exitoso' : 'Cierre de sesión voluntario',
-                p_metadata: { platform: 'web', browser: navigator.userAgent }
-            });
+            const { logAuthEvent: serverLog } = await import('@/app/auth/actions');
+            await serverLog(userId, userEmail, action, { platform: 'web', browser: navigator.userAgent });
         } catch (error) {
             console.error(`Error registrando log ${action}:`, error);
         }
@@ -57,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 'Content-Type': 'application/json'
             }
         });
-        
+
         if (!response.ok) {
             console.error("❌ [AuthProvider] Error fetching profile:", response.status);
             throw new Error(`HTTP error ${response.status}`);
@@ -66,34 +60,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = data?.[0];
 
         if (!profile) return null;
-        
-        // 2. Fetch Permissions based on Role
-        const { data: roleData, error } = await supabase
-            .from('roles')
-            .select(`
-                id,
-                name,
-                role_permissions (
-                    permissions (
-                        code
-                    )
-                )
-            `)
-            .eq('name', profile.role)
-            .single();
 
-        if (error) {
-            console.error("❌ [AuthProvider] Error fetching role permissions:", error);
-        }
+        // 2. Fetch Permissions based on Role (usando fetch directo para evitar RLS)
+        const roleUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/roles?name=eq.${profile.role}&select=id,name,role_permissions(permissions(code))`;
+        const roleResponse = await fetch(roleUrl, {
+            headers: {
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+                'Content-Type': 'application/json'
+            }
+        });
 
         let permissions: string[] = [];
-        
-        if (roleData && roleData.role_permissions) {
-            permissions = roleData.role_permissions
-                .map((rp: any) => rp.permissions?.code)
-                .filter(Boolean);
+
+        if (roleResponse.ok) {
+            const roleData = await roleResponse.json();
+            const role = roleData?.[0];
+
+            if (role && role.role_permissions) {
+                permissions = role.role_permissions
+                    .map((rp: any) => rp.permissions?.code)
+                    .filter(Boolean);
+            }
         } else {
-             console.warn(`⚠️ [AuthProvider] No permissions found for role: ${profile.role}`);
+            console.warn(`⚠️ [AuthProvider] No permissions found for role: ${profile.role}`);
         }
 
         return { ...profile, permissions };
@@ -109,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Recuperar rol y permisos de SessionStorage (Persistencia ante F5)
         const cachedRole = sessionStorage.getItem(`role_${authUser.id}`);
         const cachedPermissions = sessionStorage.getItem(`perms_${authUser.id}`);
-        
+
         // 1. OPTIMISTIC UPDATE
         const optimisticUser: User = {
             id: authUser.id,
@@ -122,14 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(currentUser => {
             if (currentUser && currentUser.id === authUser.id && !isLoginEvent) {
-                return currentUser; 
+                return currentUser;
             }
             return optimisticUser;
         });
 
         // Si no tenemos permisos cacheados, mantenemos loading true un poco más
         if (!cachedPermissions) {
-             // Keep loading
+            // Keep loading
         } else {
             setIsLoading(false);
         }
@@ -152,11 +142,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 setUser(prev => {
                     if (prev && (prev.role !== profile.role || JSON.stringify(prev.permissions) !== JSON.stringify(profile.permissions))) {
-                         return { 
-                             ...prev, 
-                             role: profile.role,
-                             permissions: profile.permissions
-                         };
+                        return {
+                            ...prev,
+                            role: profile.role,
+                            permissions: profile.permissions
+                        };
                     }
                     if (!prev) {
                         return {
@@ -184,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const initializeAuth = async () => {
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
-                
+
                 if (error) {
                     console.error("Error getSession:", error);
                     if (mounted) setIsLoading(false);
@@ -219,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null);
                 setIsLoading(false);
             } else if (event === 'USER_UPDATED') {
-                 await mapAndSetUser(session?.user);
+                await mapAndSetUser(session?.user);
             }
         });
 
@@ -260,15 +250,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const checkPermission = useCallback((permissionCode: string): boolean => {
         if (!user) return false;
-        
+
         // 1. Super Admin -> Acceso Total (Bypass)
         if (user.role === 'SUPER_ADMIN') {
-            return true; 
+            return true;
         }
 
         // 2. Verificar permiso explícito
         const hasPermission = user.permissions?.includes(permissionCode);
-        
+
         return hasPermission || false;
     }, [user]);
 

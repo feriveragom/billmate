@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import Modal from '@/components/ui/Modal';
 import { Check, X, Shield, Info, Lock } from 'lucide-react';
 import type { Role, Permission } from '@/core/domain/entities';
 import { toast } from 'sonner';
+import { createRole, updateRole } from '@/app/admin/roles/actions';
 
 interface RoleWithPermissions extends Role {
     permission_codes: string[];
@@ -19,12 +19,12 @@ interface RoleFormModalProps {
     onSuccess: () => void;
 }
 
-export default function RoleFormModal({ 
-    isOpen, 
-    onClose, 
-    initialData, 
+export default function RoleFormModal({
+    isOpen,
+    onClose,
+    initialData,
     allPermissions,
-    onSuccess 
+    onSuccess
 }: RoleFormModalProps) {
     const [formData, setFormData] = useState({
         name: '',
@@ -82,12 +82,12 @@ export default function RoleFormModal({
     const toggleModule = (modulePermissions: Permission[]) => {
         // Solo considerar permisos que NO están deshabilitados para este rol
         const availablePermissions = modulePermissions.filter(p => !isPermissionDisabled(formData.name, p));
-        
+
         if (availablePermissions.length === 0) return; // Nada que toggles
 
         const allSelected = availablePermissions.every(p => selectedPermissions.has(p.code));
         const newSet = new Set(selectedPermissions);
-        
+
         availablePermissions.forEach(p => {
             if (allSelected) {
                 newSet.delete(p.code);
@@ -95,7 +95,7 @@ export default function RoleFormModal({
                 newSet.add(p.code);
             }
         });
-        
+
         setSelectedPermissions(newSet);
     };
 
@@ -104,72 +104,31 @@ export default function RoleFormModal({
         setIsSubmitting(true);
 
         try {
-            const supabase = createClient();
-            let roleId = initialData?.id;
-
-            // 1. Upsert Role
-            const rolePayload = {
-                name: formData.name.toUpperCase().replace(/\s+/g, '_'), // Normalizar a formato código (ej: VENTAS_MANAGER)
-                label: formData.label,
-                description: formData.description,
-                is_system_role: initialData?.isSystemRole || false
-            };
-
-            let data, error;
+            const permissionCodes = Array.from(selectedPermissions);
 
             if (initialData) {
-                // Update
-                const result = await supabase
-                    .from('roles')
-                    .update(rolePayload)
-                    .eq('id', roleId)
-                    .select()
-                    .single();
-                data = result.data;
-                error = result.error;
+                // Actualizar rol existente
+                const result = await updateRole(initialData.id, {
+                    label: formData.label,
+                    description: formData.description,
+                    permissionCodes
+                });
+
+                if (!result.success) throw new Error(result.error);
+                toast.success('Rol actualizado correctamente');
             } else {
-                // Insert
-                const result = await supabase
-                    .from('roles')
-                    .insert(rolePayload)
-                    .select()
-                    .single();
-                data = result.data;
-                error = result.error;
-                if (data) roleId = data.id;
+                // Crear nuevo rol
+                const result = await createRole({
+                    name: formData.name.toUpperCase().replace(/\s+/g, '_'),
+                    label: formData.label,
+                    description: formData.description,
+                    permissionCodes
+                });
+
+                if (!result.success) throw new Error(result.error);
+                toast.success('Rol creado correctamente');
             }
 
-            if (error) throw error;
-
-            if (!roleId) throw new Error('No se pudo obtener el ID del rol');
-
-            // 2. Actualizar Permisos (Solo si cambiaron o es nuevo)
-            // Estrategia: Borrar todos y reinsertar (simple y efectivo para esta escala)
-            
-            // Primero obtener IDs de los permisos seleccionados
-            const selectedPermsObjects = allPermissions.filter(p => selectedPermissions.has(p.code));
-            
-            // Borrar existentes
-            await supabase
-                .from('role_permissions')
-                .delete()
-                .eq('role_id', roleId);
-
-            // Insertar nuevos
-            if (selectedPermsObjects.length > 0) {
-                const permissionInserts = selectedPermsObjects.map(p => ({
-                    role_id: roleId,
-                    permission_id: p.id
-                }));
-
-                const { error: permError } = await supabase
-                    .from('role_permissions')
-                    .insert(permissionInserts);
-                
-                if (permError) throw permError;
-            }
-
-            toast.success(initialData ? 'Rol actualizado correctamente' : 'Rol creado correctamente');
             onSuccess();
             onClose();
 
@@ -205,7 +164,7 @@ export default function RoleFormModal({
                                 required
                                 disabled={!!initialData} // El código no se edita una vez creado para mantener consistencia
                                 value={formData.name}
-                                onChange={e => setFormData({...formData, name: e.target.value})}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="EJ: VENTAS_MANAGER"
                                 className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                             />
@@ -217,7 +176,7 @@ export default function RoleFormModal({
                                 type="text"
                                 required
                                 value={formData.label}
-                                onChange={e => setFormData({...formData, label: e.target.value})}
+                                onChange={e => setFormData({ ...formData, label: e.target.value })}
                                 placeholder="Ej: Gerente de Ventas"
                                 className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50"
                             />
@@ -228,7 +187,7 @@ export default function RoleFormModal({
                         <textarea
                             required
                             value={formData.description}
-                            onChange={e => setFormData({...formData, description: e.target.value})}
+                            onChange={e => setFormData({ ...formData, description: e.target.value })}
                             rows={2}
                             className="w-full bg-foreground/5 border border-foreground/10 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 resize-none"
                         />
@@ -258,7 +217,7 @@ export default function RoleFormModal({
                             return (
                                 <div key={module} className={`bg-white/5 rounded-xl border border-white/10 overflow-hidden ${isModuleDisabled ? 'opacity-50' : ''}`}>
                                     {/* Header del Módulo */}
-                                    <div 
+                                    <div
                                         className={`px-4 py-3 flex items-center justify-between transition ${isProtectedRole || isModuleDisabled ? 'opacity-50 cursor-not-allowed bg-white/5' : 'cursor-pointer hover:bg-foreground/10 bg-foreground/5'}`}
                                         onClick={() => !isProtectedRole && !isModuleDisabled && toggleModule(permissions)}
                                     >
@@ -266,33 +225,30 @@ export default function RoleFormModal({
                                             {module}
                                             {isModuleDisabled && !isProtectedRole && <Lock size={12} className="text-foreground/40" />}
                                         </span>
-                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition ${
-                                            allSelected ? 'bg-primary border-primary text-white' : 
-                                            someSelected ? 'bg-primary/50 border-primary text-white' : 
-                                            'border-foreground/20 bg-background'
-                                        }`}>
+                                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition ${allSelected ? 'bg-primary border-primary text-white' :
+                                                someSelected ? 'bg-primary/50 border-primary text-white' :
+                                                    'border-foreground/20 bg-background'
+                                            }`}>
                                             {allSelected && <Check size={14} />}
                                             {!allSelected && someSelected && <div className="w-2 h-2 bg-white rounded-full" />}
                                         </div>
                                     </div>
-                                    
+
                                     {/* Lista de Permisos */}
                                     <div className="p-2 space-y-1">
                                         {permissions.map(permission => {
                                             const isSelected = selectedPermissions.has(permission.code);
                                             const isDisabled = isPermissionDisabled(formData.name, permission);
-                                            
+
                                             return (
-                                                <div 
+                                                <div
                                                     key={permission.id}
                                                     onClick={() => !isProtectedRole && togglePermission(permission.code, permission)}
-                                                    className={`flex items-center gap-3 p-2 rounded-lg transition ${
-                                                        isProtectedRole || isDisabled ? 'cursor-not-allowed opacity-50 bg-foreground/5' : 'cursor-pointer hover:bg-foreground/5'
-                                                    } ${isSelected ? 'bg-primary/10 border border-primary/20' : 'border border-transparent'}`}
+                                                    className={`flex items-center gap-3 p-2 rounded-lg transition ${isProtectedRole || isDisabled ? 'cursor-not-allowed opacity-50 bg-foreground/5' : 'cursor-pointer hover:bg-foreground/5'
+                                                        } ${isSelected ? 'bg-primary/10 border border-primary/20' : 'border border-transparent'}`}
                                                 >
-                                                    <div className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition ${
-                                                        isSelected ? 'bg-primary border-primary text-white' : 'border-foreground/30 bg-background'
-                                                    }`}>
+                                                    <div className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center transition ${isSelected ? 'bg-primary border-primary text-white' : 'border-foreground/30 bg-background'
+                                                        }`}>
                                                         {isSelected && <Check size={10} />}
                                                     </div>
                                                     <div className="flex-1">

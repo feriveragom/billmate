@@ -1,46 +1,36 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Edit2, Trash2, Plus } from 'lucide-react';
 import PermissionFormModal from './PermissionFormModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Permission } from '@/core/domain/entities';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/features/auth/AuthProvider';
+import { getPermissions } from '@/app/admin/roles/actions';
 
 export default function PermissionsTable() {
     const [permissions, setPermissions] = useState<Permission[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
-    
-    // Estado para eliminación
+
     const [permissionToDelete, setPermissionToDelete] = useState<Permission | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const { checkPermission } = useAuth();
-    const canManageRoles = checkPermission('admin.roles.manage'); // Reusamos el permiso de roles para gestionar permisos por ahora
+    const canManageRoles = checkPermission('admin.roles.manage');
 
     const fetchPermissions = useCallback(async () => {
         setIsLoading(true);
         try {
-            const supabase = createClient();
-            const { data, error } = await supabase
-                .from('permissions')
-                .select('*')
-                .order('module', { ascending: true }) // Agrupar visualmente por módulo
-                .order('code', { ascending: true });
+            const result = await getPermissions();
 
-            if (error) throw error;
-
-            if (data) {
-                setPermissions(data.map(p => ({
-                    id: p.id,
-                    code: p.code,
-                    description: p.description,
-                    module: p.module as any
-                })));
+            if (result.success && result.data) {
+                setPermissions(result.data);
+            } else {
+                console.error('Error fetching permissions:', result.error);
+                toast.error('Error al cargar permisos');
             }
         } catch (err) {
             console.error('Error fetching permissions:', err);
@@ -70,22 +60,19 @@ export default function PermissionsTable() {
 
     const handleConfirmDelete = async () => {
         if (!permissionToDelete) return;
-        
+
         setIsDeleting(true);
         try {
-            const supabase = createClient();
-            const { error } = await supabase
-                .from('permissions')
-                .delete()
-                .eq('id', permissionToDelete.id);
+            const { deletePermission } = await import('@/app/admin/roles/actions');
+            const result = await deletePermission(permissionToDelete.id);
 
-            if (error) throw error;
+            if (!result.success) throw new Error(result.error);
 
             toast.success(`Permiso ${permissionToDelete.code} eliminado`);
             fetchPermissions();
         } catch (err: any) {
             console.error('Error deleting permission:', err);
-            toast.error('No se pudo eliminar. Puede estar en uso por algún rol.');
+            toast.error('No se pudo eliminar: ' + err.message);
         } finally {
             setIsDeleting(false);
             setPermissionToDelete(null);
@@ -106,7 +93,7 @@ export default function PermissionsTable() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Gestión de Permisos</h2>
-                <button 
+                <button
                     onClick={handleCreate}
                     disabled={!canManageRoles}
                     className={`px-4 py-2 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 transition flex items-center gap-2 ${!canManageRoles ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary/90'}`}
@@ -158,7 +145,7 @@ export default function PermissionsTable() {
                                             <div className="flex items-center justify-end gap-2">
                                                 {canManageRoles && (
                                                     <>
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleEdit(permission)}
                                                             className="p-2 hover:bg-white/10 rounded-lg text-primary transition"
                                                             title="Editar"
@@ -166,7 +153,7 @@ export default function PermissionsTable() {
                                                             <Edit2 size={16} />
                                                         </button>
                                                         {permission.code !== 'admin.access' ? (
-                                                            <button 
+                                                            <button
                                                                 onClick={() => handleDeleteClick(permission)}
                                                                 className="p-2 hover:bg-red-500/10 rounded-lg text-red-400 transition"
                                                                 title="Eliminar"
@@ -202,7 +189,7 @@ export default function PermissionsTable() {
                 onCancel={() => setPermissionToDelete(null)}
                 onConfirm={handleConfirmDelete}
                 title="¿Eliminar permiso?"
-                message={`Estás a punto de eliminar permanentemente el permiso "${permissionToDelete?.code}". Esto podría afectar a funcionalidades del sistema.`}
+                message={`Estás a punto de eliminar permanentemente el permiso "${permissionToDelete?.code}". Esto afectará a todos los roles que lo usen.`}
                 confirmText={isDeleting ? "Eliminando..." : "Sí, eliminar"}
                 type="warning"
             />
