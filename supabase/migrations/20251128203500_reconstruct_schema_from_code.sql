@@ -7,9 +7,9 @@
 -- CONTIENE:
 -- 1. Tablas Core (Profiles, Roles, Permissions)
 -- 2. Tablas de Negocio (ServiceDefinitions, ServiceInstances)
--- 3. Sistema de Auditoría (AuditLogs)
+-- 3. Sistema de Auditoría (AuditLogs + Auto Purge)
 -- 4. Triggers y Funciones
--- 5. Políticas de Seguridad (RLS)
+-- 5. Políticas de Seguridad (RLS) - Corregidas para evitar recursión
 -- ==============================================================================
 
 -- Habilitar extensiones necesarias
@@ -161,7 +161,10 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Función helper para logs
+-- Índice para optimizar la purga automática
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON public.audit_logs(created_at);
+
+-- Función helper para insertar logs
 CREATE OR REPLACE FUNCTION public.log_audit_event(
     p_user_id UUID,
     p_user_email TEXT,
@@ -188,6 +191,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Función de purga automática (Logs > 2 días)
+CREATE OR REPLACE FUNCTION public.purge_old_audit_logs()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM public.audit_logs
+    WHERE created_at < (NOW() - INTERVAL '2 days');
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger de purga automática
+DROP TRIGGER IF EXISTS trigger_auto_purge_logs ON public.audit_logs;
+CREATE TRIGGER trigger_auto_purge_logs
+    AFTER INSERT ON public.audit_logs
+    FOR EACH STATEMENT
+    EXECUTE FUNCTION public.purge_old_audit_logs();
+
 -- =====================================================
 -- 5. SEGURIDAD (ROW LEVEL SECURITY)
 -- =====================================================
@@ -199,26 +219,74 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.permissions ENABLE ROW LEVEL SECURITY;
 
+-- Funciones Helper para RLS (Evitan recursión infinita)
+CREATE OR REPLACE FUNCTION public.is_admin_or_super_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role IN ('ADMIN', 'SUPER_ADMIN')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND role = 'SUPER_ADMIN'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Políticas Profiles
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- Política corregida para Admins (usa función segura)
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('ADMIN', 'SUPER_ADMIN'))
+    auth.uid() = id OR public.is_admin_or_super_admin()
+);
+
+DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
+CREATE POLICY "Admins can update all profiles" ON public.profiles FOR UPDATE USING (
+    auth.uid() = id OR public.is_admin_or_super_admin()
 );
 
 -- Políticas Services
+DROP POLICY IF EXISTS "Users can CRUD own definitions" ON public.service_definitions;
 CREATE POLICY "Users can CRUD own definitions" ON public.service_definitions USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can CRUD own instances" ON public.service_instances;
 CREATE POLICY "Users can CRUD own instances" ON public.service_instances USING (auth.uid() = user_id);
 
 -- Políticas Roles/Permissions (Lectura pública autenticada, escritura Admin)
+DROP POLICY IF EXISTS "Auth users can read roles" ON public.roles;
 CREATE POLICY "Auth users can read roles" ON public.roles FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Auth users can read permissions" ON public.permissions;
 CREATE POLICY "Auth users can read permissions" ON public.permissions FOR SELECT TO authenticated USING (true);
 
 -- Políticas Audit Logs
-CREATE POLICY "Super Admin view logs" ON public.audit_logs FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'SUPER_ADMIN')
-);
+DROP POLICY IF EXISTS "SUPER_ADMIN can view all audit logs" ON public.audit_logs;
+CREATE POLICY "SUPER_ADMIN can view all audit logs" ON public.audit_logs FOR SELECT USING ( public.is_super_admin() );
+
+DROP POLICY IF EXISTS "SUPER_ADMIN can delete audit logs" ON public.audit_logs;
+CREATE POLICY "SUPER_ADMIN can delete audit logs" ON public.audit_logs FOR DELETE USING ( public.is_super_admin() );
+
+DROP POLICY IF EXISTS "System insert logs" ON public.audit_logs;
 CREATE POLICY "System insert logs" ON public.audit_logs FOR INSERT WITH CHECK (true);
+
+-- Permisos de ejecución para funciones RLS
+GRANT EXECUTE ON FUNCTION public.is_admin_or_super_admin TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_super_admin TO authenticated;
 
 -- =====================================================
 -- FIN DEL SCRIPT

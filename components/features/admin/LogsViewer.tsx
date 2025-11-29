@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Trash2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
@@ -19,6 +19,7 @@ import {
     flexRender,
     createColumnHelper,
     type SortingState,
+    type Row,
 } from '@tanstack/react-table';
 
 interface AuditLog {
@@ -30,6 +31,73 @@ interface AuditLog {
 }
 
 const columnHelper = createColumnHelper<AuditLog>();
+
+// --- Componente de Tarjeta para Móvil ---
+const LogCard = ({ row, onDelete }: { row: Row<AuditLog>, onDelete: (id: string) => void }) => {
+    const log = row.original;
+    const isSelected = row.getIsSelected();
+
+    return (
+        <div 
+            className={`p-3 rounded-xl border transition-all ${
+                isSelected 
+                ? 'bg-primary/10 border-primary/30' 
+                : 'bg-card border-foreground/10 hover:border-foreground/20'
+            }`}
+        >
+            <div className="flex gap-3 items-start">
+                {/* Checkbox */}
+                <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={row.getToggleSelectedHandler()}
+                        className="w-4 h-4 rounded border-foreground/20 bg-foreground/5 cursor-pointer accent-primary"
+                    />
+                </div>
+
+                {/* Content Grid */}
+                <div className="flex-1 min-w-0 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+                    {/* Row 1: User Info | Badge */}
+                    <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-medium text-foreground truncate">{log.user_email}</span>
+                        <span className="text-[10px] text-foreground/40">{new Date(log.created_at).toLocaleString()}</span>
+                    </div>
+                    
+                    <div className="flex justify-end items-start">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase ${
+                            log.action_type === 'DELETE' ? 'bg-red-500/20 text-red-400' :
+                            log.action_type === 'LOGIN' ? 'bg-green-500/20 text-green-400' :
+                            log.action_type === 'LOGOUT' ? 'bg-orange-500/20 text-orange-400' :
+                            'bg-blue-500/20 text-blue-400'
+                        }`}>
+                            {log.action_type}
+                        </span>
+                    </div>
+
+                    {/* Row 2: Description | Delete Button */}
+                    <div className="flex items-center min-w-0 pt-1">
+                         <p className="text-xs text-foreground/60 truncate" title={log.action_description}>
+                            {log.action_description}
+                        </p>
+                    </div>
+
+                    <div className="flex justify-end items-center">
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(log.id);
+                            }}
+                            className="p-1.5 -mr-1.5 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function LogsViewer() {
     const searchParams = useSearchParams();
@@ -153,7 +221,7 @@ export default function LogsViewer() {
                         type="checkbox"
                         checked={table.getIsAllRowsSelected()}
                         onChange={table.getToggleAllRowsSelectedHandler()}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 cursor-pointer accent-primary"
+                        className="w-4 h-4 rounded border-foreground/20 bg-foreground/5 cursor-pointer accent-primary"
                     />
                 ),
                 cell: ({ row }) => (
@@ -161,7 +229,7 @@ export default function LogsViewer() {
                         type="checkbox"
                         checked={row.getIsSelected()}
                         onChange={row.getToggleSelectedHandler()}
-                        className="w-4 h-4 rounded border-white/20 bg-white/5 cursor-pointer accent-primary"
+                        className="w-4 h-4 rounded border-foreground/20 bg-foreground/5 cursor-pointer accent-primary"
                     />
                 ),
                 size: 40,
@@ -243,31 +311,42 @@ export default function LogsViewer() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 className="text-2xl font-bold">Logs de Auditoría</h2>
 
-                <button
-                    onClick={() => handleDeleteRequest('bulk')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${selectedCount > 0
-                        ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
-                        : 'bg-red-500/10 text-red-500 cursor-not-allowed border border-red-500/10'
-                        }`}
-                >
-                    <Trash2 size={18} />
-                    <span>Eliminar {selectedCount > 0 ? `(${selectedCount})` : 'Selección'}</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    {/* Botón Select All para Móvil */}
+                    <button
+                        onClick={table.getToggleAllRowsSelectedHandler()}
+                        className="md:hidden flex items-center gap-2 px-4 py-2 rounded-xl font-medium bg-foreground/5 border border-foreground/10 text-sm"
+                    >
+                        {table.getIsAllRowsSelected() ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} />}
+                        <span>{table.getIsAllRowsSelected() ? 'Deseleccionar' : 'Seleccionar Todo'}</span>
+                    </button>
+
+                    <button
+                        onClick={() => handleDeleteRequest('bulk')}
+                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${selectedCount > 0
+                            ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
+                            : 'bg-red-500/10 text-red-500 cursor-not-allowed border border-red-500/10'
+                            }`}
+                    >
+                        <Trash2 size={18} />
+                        <span>Eliminar {selectedCount > 0 ? `(${selectedCount})` : 'Selección'}</span>
+                    </button>
+                </div>
             </div>
 
             {/* Panel de Filtros */}
-            <div className="bg-card border border-white/10 rounded-2xl p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-card border border-foreground/10 rounded-2xl p-4 md:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     <div className="space-y-1">
                         <label className="text-xs font-medium text-foreground/50 ml-1 uppercase tracking-wider">Usuario</label>
                         <SelectInput
                             value={selectedUser}
                             onChange={setSelectedUser}
                             options={userOptions}
-                            placeholder="Todos los usuarios"
+                            placeholder="Todos"
                             isClearable={false}
                             isSearchable={true}
                         />
@@ -278,9 +357,9 @@ export default function LogsViewer() {
                         <select
                             value={selectedAction}
                             onChange={(e) => setSelectedAction(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl focus:border-primary outline-none transition-colors"
+                            className="w-full px-4 py-2.5 bg-background border border-foreground/10 rounded-xl focus:border-primary outline-none transition-colors"
                         >
-                            <option value="all">Todas las acciones</option>
+                            <option value="all">Todas</option>
                             {['LOGIN', 'LOGOUT', 'SIGNUP', 'CREATE', 'DELETE', 'UPDATE'].map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
@@ -291,7 +370,7 @@ export default function LogsViewer() {
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl focus:border-primary outline-none transition-colors"
+                            className="w-full px-4 py-2.5 bg-background border border-foreground/10 rounded-xl focus:border-primary outline-none transition-colors"
                         />
                     </div>
 
@@ -301,14 +380,14 @@ export default function LogsViewer() {
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl focus:border-primary outline-none transition-colors"
+                            className="w-full px-4 py-2.5 bg-background border border-foreground/10 rounded-xl focus:border-primary outline-none transition-colors"
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Tabla con TanStack Table */}
-            <div className="bg-card border border-white/10 rounded-2xl overflow-hidden">
+            {/* Contenedor de Datos */}
+            <div className="bg-transparent md:bg-card md:border md:border-foreground/10 rounded-2xl overflow-hidden">
                 {isLoading ? (
                     <div className="p-12 text-center text-foreground/50 animate-pulse">Cargando registros...</div>
                 ) : data.length === 0 ? (
@@ -317,62 +396,76 @@ export default function LogsViewer() {
                         <p>No hay logs que coincidan con los filtros actuales</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-white/5 font-medium text-foreground/70">
-                                {table.getHeaderGroups().map(headerGroup => (
-                                    <tr key={headerGroup.id}>
-                                        {headerGroup.headers.map(header => {
-                                            const isCheckbox = header.id === 'select';
-                                            const isActions = header.id === 'actions';
-                                            return (
-                                                <th
-                                                    key={header.id}
-                                                    className={`p-4 ${isCheckbox || isActions ? 'text-center' : 'text-left'}`}
-                                                    style={{ width: header.column.columnDef.size }}
-                                                >
-                                                    {header.isPlaceholder ? null : (
-                                                        <div
-                                                            className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center gap-2' : ''}
-                                                            onClick={header.column.getToggleSortingHandler()}
-                                                        >
-                                                            {flexRender(header.column.columnDef.header, header.getContext())}
-                                                            {header.column.getCanSort() && (
-                                                                <span className="text-foreground/30">
-                                                                    {{
-                                                                        asc: <ArrowUp size={14} />,
-                                                                        desc: <ArrowDown size={14} />,
-                                                                    }[header.column.getIsSorted() as string] ?? <ArrowUpDown size={14} />}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </th>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {table.getRowModel().rows.map(row => (
-                                    <tr
-                                        key={row.id}
-                                        className={`hover:bg-white/5 transition group ${row.getIsSelected() ? 'bg-primary/5' : ''}`}
-                                    >
-                                        {row.getVisibleCells().map(cell => {
-                                            const isCheckbox = cell.column.id === 'select';
-                                            const isActions = cell.column.id === 'actions';
-                                            return (
-                                                <td key={cell.id} className={`p-4 ${isCheckbox || isActions ? 'text-center' : 'text-left'}`}>
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <>
+                        {/* VISTA DE TABLA (Desktop) */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-foreground/5 font-medium text-foreground/70">
+                                    {table.getHeaderGroups().map(headerGroup => (
+                                        <tr key={headerGroup.id}>
+                                            {headerGroup.headers.map(header => {
+                                                const isCheckbox = header.id === 'select';
+                                                const isActions = header.id === 'actions';
+                                                return (
+                                                    <th
+                                                        key={header.id}
+                                                        className={`p-4 ${isCheckbox || isActions ? 'text-center' : 'text-left'}`}
+                                                        style={{ width: header.column.columnDef.size }}
+                                                    >
+                                                        {header.isPlaceholder ? null : (
+                                                            <div
+                                                                className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center gap-2' : ''}
+                                                                onClick={header.column.getToggleSortingHandler()}
+                                                            >
+                                                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                                                {header.column.getCanSort() && (
+                                                                    <span className="text-foreground/30">
+                                                                        {{
+                                                                            asc: <ArrowUp size={14} />,
+                                                                            desc: <ArrowDown size={14} />,
+                                                                        }[header.column.getIsSorted() as string] ?? <ArrowUpDown size={14} />}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </th>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </thead>
+                                <tbody className="divide-y divide-foreground/5">
+                                    {table.getRowModel().rows.map(row => (
+                                        <tr
+                                            key={row.id}
+                                            className={`hover:bg-foreground/5 transition group ${row.getIsSelected() ? 'bg-primary/5' : ''}`}
+                                        >
+                                            {row.getVisibleCells().map(cell => {
+                                                const isCheckbox = cell.column.id === 'select';
+                                                const isActions = cell.column.id === 'actions';
+                                                return (
+                                                    <td key={cell.id} className={`p-4 ${isCheckbox || isActions ? 'text-center' : 'text-left'}`}>
+                                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* VISTA DE TARJETAS (Móvil) */}
+                        <div className="md:hidden space-y-3">
+                            {table.getRowModel().rows.map(row => (
+                                <LogCard 
+                                    key={row.id} 
+                                    row={row} 
+                                    onDelete={(id) => handleDeleteRequest('single', id)}
+                                />
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
 
