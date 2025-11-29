@@ -1,8 +1,8 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import RepositoryFactory from '@/core/infrastructure/RepositoryFactory';
 
 /**
  * Verifica que el usuario sea SUPER_ADMIN (único con acceso a logs)
@@ -40,33 +40,43 @@ export async function getAuditLogs(filters?: {
     try {
         await verifySuperAdmin();
 
-        const adminClient = createAdminClient();
-        let query = adminClient
-            .from('audit_logs')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const auditLogRepository = RepositoryFactory.getAuditLogRepository();
+
+        // Aplicar filtros básicos del repositorio
+        const basicFilters: { userId?: string; action?: string } = {};
 
         if (filters?.userId && filters.userId !== 'all') {
-            query = query.eq('user_id', filters.userId);
+            basicFilters.userId = filters.userId;
         }
 
         if (filters?.actionType && filters.actionType !== 'all') {
-            query = query.eq('action_type', filters.actionType);
+            basicFilters.action = filters.actionType;
         }
 
+        let logs = await auditLogRepository.getAll(basicFilters);
+
+        // Filtros de fecha en memoria (o podríamos agregarlos a la interfaz del repositorio)
         if (filters?.startDate) {
-            query = query.gte('created_at', `${filters.startDate}T00:00:00-05:00`);
+            const startDateTime = new Date(`${filters.startDate}T00:00:00-05:00`);
+            logs = logs.filter(log => new Date(log.createdAt) >= startDateTime);
         }
 
         if (filters?.endDate) {
-            query = query.lte('created_at', `${filters.endDate}T23:59:59-05:00`);
+            const endDateTime = new Date(`${filters.endDate}T23:59:59-05:00`);
+            logs = logs.filter(log => new Date(log.createdAt) <= endDateTime);
         }
 
-        const { data, error } = await query;
+        // Map to expected format for frontend
+        const formattedLogs = logs.map(log => ({
+            id: log.id,
+            user_id: log.userId,
+            action_type: log.action,
+            action_description: log.details,
+            ip_address: log.ipAddress,
+            created_at: log.createdAt
+        }));
 
-        if (error) throw error;
-
-        return { success: true, data };
+        return { success: true, data: formattedLogs };
     } catch (error: any) {
         console.error('Error fetching audit logs:', error);
         return { success: false, error: error.message };
@@ -80,15 +90,16 @@ export async function getUsersForFilter() {
     try {
         await verifySuperAdmin();
 
-        const adminClient = createAdminClient();
-        const { data, error } = await adminClient
-            .from('profiles')
-            .select('id, email, full_name')
-            .order('email');
+        const userRepository = RepositoryFactory.getUserRepository();
+        const users = await userRepository.getAll();
 
-        if (error) throw error;
+        const formattedUsers = users.map(user => ({
+            id: user.id,
+            email: user.email,
+            full_name: user.fullName
+        }));
 
-        return { success: true, data };
+        return { success: true, data: formattedUsers };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
@@ -101,13 +112,8 @@ export async function deleteAuditLog(logId: string) {
     try {
         await verifySuperAdmin();
 
-        const adminClient = createAdminClient();
-        const { error } = await adminClient
-            .from('audit_logs')
-            .delete()
-            .eq('id', logId);
-
-        if (error) throw error;
+        const auditLogRepository = RepositoryFactory.getAuditLogRepository();
+        await auditLogRepository.delete(logId);
 
         revalidatePath('/admin/logs');
         return { success: true };
@@ -123,13 +129,8 @@ export async function deleteMultipleAuditLogs(logIds: string[]) {
     try {
         await verifySuperAdmin();
 
-        const adminClient = createAdminClient();
-        const { error } = await adminClient
-            .from('audit_logs')
-            .delete()
-            .in('id', logIds);
-
-        if (error) throw error;
+        const auditLogRepository = RepositoryFactory.getAuditLogRepository();
+        await auditLogRepository.deleteMany(logIds);
 
         revalidatePath('/admin/logs');
         return { success: true, count: logIds.length };

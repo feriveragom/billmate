@@ -1,46 +1,55 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import RepositoryFactory from '@/core/infrastructure/RepositoryFactory';
 
 /**
- * Obtiene todos los usuarios utilizando el Service Role Key
- * Esto evita los problemas de recursión de RLS y asegura acceso total
- * Solo debe ser llamado desde componentes protegidos por rol de Admin
+ * Verifica que el usuario autenticado sea ADMIN o SUPER_ADMIN
+ */
+async function verifyAdminAccess() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error('No autenticado');
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile || !['ADMIN', 'SUPER_ADMIN'].includes(profile.role)) {
+        throw new Error('No autorizado');
+    }
+
+    return user.id;
+}
+
+/**
+ * Obtiene todos los usuarios
  */
 export async function getAdminUsers() {
     try {
-        // 1. Verificar seguridad: El usuario que llama debe ser ADMIN o SUPER_ADMIN
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        await verifyAdminAccess();
 
-        if (!user) {
-            throw new Error('No autenticado');
-        }
+        const userRepository = RepositoryFactory.getUserRepository();
+        const users = await userRepository.getAll();
 
-        // Verificar rol en la DB (usando el cliente normal, si falla RLS aquí, es otro tema, 
-        // pero para leer el propio perfil usualmente no hay recursión si la política es simple "auth.uid() = id")
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
+        // Map UserProfile to expected format
+        const formattedUsers = users.map(user => ({
+            id: user.id,
+            email: user.email,
+            full_name: user.fullName,
+            avatar_url: user.avatarUrl,
+            role: user.roleId,
+            is_active: !user.isBanned,
+            created_at: user.createdAt
+        }));
 
-        if (!profile || !['ADMIN', 'SUPER_ADMIN'].includes(profile.role)) {
-            throw new Error('No autorizado');
-        }
-
-        // 2. Obtener usuarios con privilegios de administrador (Service Role)
-        const adminClient = createAdminClient();
-        const { data: users, error } = await adminClient
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        return { success: true, data: users };
+        return { success: true, data: formattedUsers };
     } catch (error: any) {
         console.error('Error fetching users:', error);
         return { success: false, error: error.message };
@@ -48,17 +57,14 @@ export async function getAdminUsers() {
 }
 
 /**
- * Actualiza el estado (ban/unban) de un usuario
+ * Actualiza el estado de un usuario
  */
 export async function toggleUserStatus(userId: string, isActive: boolean) {
     try {
-        const adminClient = createAdminClient();
-        const { error } = await adminClient
-            .from('profiles')
-            .update({ is_active: isActive })
-            .eq('id', userId);
+        await verifyAdminAccess();
 
-        if (error) throw error;
+        const userRepository = RepositoryFactory.getUserRepository();
+        await userRepository.updateStatus(userId, isActive);
 
         revalidatePath('/admin/users');
         return { success: true };
@@ -72,13 +78,10 @@ export async function toggleUserStatus(userId: string, isActive: boolean) {
  */
 export async function updateUserRole(userId: string, newRole: string) {
     try {
-        const adminClient = createAdminClient();
-        const { error } = await adminClient
-            .from('profiles')
-            .update({ role: newRole })
-            .eq('id', userId);
+        await verifyAdminAccess();
 
-        if (error) throw error;
+        const userRepository = RepositoryFactory.getUserRepository();
+        await userRepository.updateRole(userId, newRole);
 
         revalidatePath('/admin/users');
         return { success: true };

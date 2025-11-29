@@ -1,15 +1,12 @@
 -- ==============================================================================
--- RECONSTRUCCIÓN DE ESQUEMA DE BASE DE DATOS - BILLMATE
+-- ESQUEMA DE BASE DE DATOS - BILLMATE (DISEÑO OPTIMIZADO)
 -- ==============================================================================
--- Este archivo ha sido generado analizando el código fuente de la aplicación
--- para servir como script de recuperación en caso de pérdida total de la base de datos.
---
--- CONTIENE:
--- 1. Tablas Core (Profiles, Roles, Permissions)
--- 2. Tablas de Negocio (ServiceDefinitions, ServiceInstances)
--- 3. Sistema de Auditoría (AuditLogs + Auto Purge)
--- 4. Triggers y Funciones
--- 5. Políticas de Seguridad (RLS) - Corregidas para evitar recursión
+-- Este archivo define el esquema completo con:
+-- 1. Permisos como ciudadanos de primera clase
+-- 2. Roles as agrupadores de permisos (M:M)
+-- 3. Usuarios con UN solo rol (1:1)
+-- 4. Servicios multiusuario (Definiciones e Instancias)
+-- 5. Sistema de auditoría
 -- ==============================================================================
 
 -- Habilitar extensiones necesarias
@@ -19,7 +16,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. SISTEMA DE ROLES Y PERMISOS (RBAC)
 -- =====================================================
 
--- Tabla de Permisos (Capacidades atómicas)
+-- Tabla de Permisos (Ciudadanos de primera clase)
 CREATE TABLE IF NOT EXISTS public.permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     code TEXT NOT NULL UNIQUE, -- ej: 'service.create'
@@ -38,7 +35,7 @@ CREATE TABLE IF NOT EXISTS public.roles (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabla Intermedia Roles <-> Permisos
+-- Tabla Intermedia Roles <-> Permisos (M:M)
 CREATE TABLE IF NOT EXISTS public.role_permissions (
     role_id UUID REFERENCES public.roles(id) ON DELETE CASCADE,
     permission_id UUID REFERENCES public.permissions(id) ON DELETE CASCADE,
@@ -46,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.role_permissions (
     PRIMARY KEY (role_id, permission_id)
 );
 
--- Datos Semilla (Seed Data) Básicos - Para asegurar funcionamiento inicial
+-- Datos Semilla (Seed Data) - Roles del Sistema
 INSERT INTO public.roles (name, label, description, is_system_role)
 VALUES 
     ('SUPER_ADMIN', 'Super Admin', 'Acceso total al sistema', true),
@@ -64,23 +61,31 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     email TEXT NOT NULL,
     full_name TEXT,
     avatar_url TEXT,
-    role TEXT NOT NULL DEFAULT 'FREE_USER' REFERENCES public.roles(name) ON UPDATE CASCADE,
+    role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE RESTRICT, -- ⬅️ OPTIMIZADO
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Índice para optimizar queries por rol
+CREATE INDEX IF NOT EXISTS idx_profiles_role_id ON public.profiles(role_id);
+
 -- Trigger para crear perfil automáticamente al registrarse
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    default_role_id UUID;
 BEGIN
-    INSERT INTO public.profiles (id, email, full_name, avatar_url, role)
+    -- Obtener el ID del rol FREE_USER
+    SELECT id INTO default_role_id FROM public.roles WHERE name = 'FREE_USER' LIMIT 1;
+
+    INSERT INTO public.profiles (id, email, full_name, avatar_url, role_id)
     VALUES (
         NEW.id,
         NEW.email,
         NEW.raw_user_meta_data->>'full_name',
         NEW.raw_user_meta_data->>'avatar_url',
-        'FREE_USER'
+        default_role_id
     );
     RETURN NEW;
 END;
@@ -109,11 +114,14 @@ CREATE TABLE IF NOT EXISTS public.service_definitions (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Índice para optimizar búsquedas por usuario
+CREATE INDEX IF NOT EXISTS idx_service_definitions_user_id ON public.service_definitions(user_id);
+
 -- Instancias de Servicio (El pago real mensual)
 CREATE TABLE IF NOT EXISTS public.service_instances (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    definition_id UUID REFERENCES public.service_definitions(id) ON DELETE SET NULL,
+    definition_id UUID REFERENCES public.service_definitions(id) ON DELETE RESTRICT, -- ⬅️ OPTIMIZADO
     
     -- Datos específicos de la instancia
     name TEXT NOT NULL,
@@ -136,13 +144,19 @@ CREATE TABLE IF NOT EXISTS public.service_instances (
     notes TEXT,
     external_payment_id TEXT,
     
-    -- Campos desnormalizados (cache visual)
+    -- Campos desnormalizados (cache visual - sincronizar vía trigger si es necesario)
     icon TEXT,
     color TEXT,
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Índices para optimizar queries
+CREATE INDEX IF NOT EXISTS idx_service_instances_user_id ON public.service_instances(user_id);
+CREATE INDEX IF NOT EXISTS idx_service_instances_definition_id ON public.service_instances(definition_id);
+CREATE INDEX IF NOT EXISTS idx_service_instances_status ON public.service_instances(status);
+CREATE INDEX IF NOT EXISTS idx_service_instances_due_date ON public.service_instances(due_date);
 
 -- =====================================================
 -- 4. SISTEMA DE AUDITORÍA
@@ -151,7 +165,7 @@ CREATE TABLE IF NOT EXISTS public.service_instances (
 CREATE TABLE IF NOT EXISTS public.audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-    user_email TEXT NOT NULL,
+    user_email TEXT NOT NULL, -- Guardado para auditoría incluso si se borra el usuario
     action_type TEXT NOT NULL,
     action_category TEXT NOT NULL,
     action_description TEXT NOT NULL,
@@ -161,8 +175,10 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Índice para optimizar la purga automática
+-- Índices para optimizar búsquedas y purgas
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON public.audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON public.audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action_type ON public.audit_logs(action_type);
 
 -- Función helper para insertar logs
 CREATE OR REPLACE FUNCTION public.log_audit_event(
@@ -224,9 +240,10 @@ CREATE OR REPLACE FUNCTION public.is_admin_or_super_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid()
-    AND role IN ('ADMIN', 'SUPER_ADMIN')
+    SELECT 1 FROM public.profiles p
+    INNER JOIN public.roles r ON p.role_id = r.id
+    WHERE p.id = auth.uid()
+    AND r.name IN ('ADMIN', 'SUPER_ADMIN')
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -235,9 +252,10 @@ CREATE OR REPLACE FUNCTION public.is_super_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid()
-    AND role = 'SUPER_ADMIN'
+    SELECT 1 FROM public.profiles p
+    INNER JOIN public.roles r ON p.role_id = r.id
+    WHERE p.id = auth.uid()
+    AND r.name = 'SUPER_ADMIN'
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -249,7 +267,6 @@ CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Política corregida para Admins (usa función segura)
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (
     auth.uid() = id OR public.is_admin_or_super_admin()
@@ -289,5 +306,11 @@ GRANT EXECUTE ON FUNCTION public.is_admin_or_super_admin TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_super_admin TO authenticated;
 
 -- =====================================================
--- FIN DEL SCRIPT
+-- RESUMEN DE OPTIMIZACIONES
 -- =====================================================
+-- ✅ profiles.role -> profiles.role_id (UUID FK más eficiente)
+-- ✅ ON DELETE RESTRICT en profiles.role_id (protege roles activos)
+-- ✅ ON DELETE RESTRICT en service_instances.definition_id (protege definiciones en uso)
+-- ✅ Índices añadidos para todos los campos de búsqueda frecuente
+-- ✅ Funciones RLS actualizadas para usar JOIN con roles
+-- ==============================================================================

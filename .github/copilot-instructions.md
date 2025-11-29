@@ -15,9 +15,9 @@ Adoptamos una **Arquitectura Híbrida (Feature-based + Layered)** para equilibra
     *   **`dashboard/`**: Widgets de resumen, feeds de actividad.
     *   **`services/`**: Gestión de Definiciones (Tipos de gasto).
     *   **`billing/`**: Gestión de Instancias (Pagos reales), formularios de pago.
-    *   **`auth/`**: Login, Perfil, ProtectedRoute. (Lógica de Auth en `lib/supabase/` y `middleware.ts`).
+    *   **`auth/`**: Login, Perfil, ProtectedRoute. (Lógica de Auth en `lib/firebase/` y `middleware.ts`).
 *   **`lib/`**: Utilidades transversales, Store global (Zustand/Context), Tipos TypeScript y constantes.
-    *   **`supabase/`**: Clientes tipados (`client.ts`, `server.ts`) para interactuar con Supabase Auth.
+    *   **`firebase/`**: Clientes tipados (`client.ts`, `server.ts`) para interactuar con Firebase Auth y Firestore.
 
 ### 1.2 Estrategia de Despliegue (Web + APK)
 *   **Objetivo Dual:** El proyecto funcionará como Web App y como **APK nativa para Android** (vía TWA/Capacitor).
@@ -29,11 +29,17 @@ Adoptamos una **Arquitectura Híbrida (Feature-based + Layered)** para equilibra
 
 ## 2. Patrones de Diseño y Código
 
-### 2.1 Clean Architecture en Frontend
+### 2.1 Clean Architecture y Patrón Repositorio (ESTRICTO)
 *   **Separación de Responsabilidades:**
     *   **UI Components:** Solo renderizan datos y capturan eventos. No deben contener lógica compleja de negocio ni llamadas directas a APIs (usar Hooks/Store).
-    *   **Store/Hooks:** Manejan el estado, la lógica de negocio y la comunicación con el backend/servicios.
-*   **Single Responsibility Principle (SRP):** Cada componente o función debe hacer una sola cosa bien. Si un componente crece demasiado, refactorizar en sub-componentes.
+    *   **Store/Hooks:** Manejan el estado y la lógica de negocio, pero NUNCA llaman a la base de datos directamente.
+    *   **Server Actions:** Orquestan la lógica de aplicación, pero DELEGAN el acceso a datos a los Repositorios.
+*   **Patrón Repositorio (OBLIGATORIO):**
+    *   **Regla de Oro:** NINGÚN archivo fuera de `core/infrastructure` puede importar clientes de base de datos (ej: `firebase/firestore`, `firebase/auth`).
+    *   **Interfaces:** Toda interacción con datos debe definirse primero como una interfaz en `core/domain/repositories` (ej: `IUserRepository`).
+    *   **Implementación:** Las implementaciones concretas (ej: `FirebaseUserRepository`) residen en `core/infrastructure/repositories`.
+    *   **Inyección:** Usar un `RepositoryFactory` o inyección de dependencias para obtener las instancias. Esto permite cambiar de proveedor tocando UN solo archivo.
+    *   **Prohibido:** Usar `getFirestore()` o `collection()` directamente en componentes o Server Actions.
 
 ### 2.2 Seguridad y Control de Acceso (NUEVO - Permission-Driven)
 *   **Modelo RBAC Estricto:** El sistema utiliza un modelo de **Control de Acceso Basado en Permisos**.
