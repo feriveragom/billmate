@@ -14,22 +14,25 @@ export default function ServiceInstanceDetails({ instance, onClose }: ServiceIns
         { id: 3, date: '2025-11-25 08:30', message: '¡Vence hoy! No olvides pagar', status: 'pending' },
     ];
 
-    const statusColors = {
+    const statusColors: Record<string, string> = {
         paid: 'text-green-500',
         pending: 'text-yellow-500',
-        overdue: 'text-red-500'
+        overdue: 'text-red-500',
+        cancelled: 'text-gray-500'
     };
 
-    const statusLabels = {
+    const statusLabels: Record<string, string> = {
         paid: 'Pagado',
         pending: 'Pendiente',
-        overdue: 'Vencido'
+        overdue: 'Vencido',
+        cancelled: 'Cancelado'
     };
 
-    const statusIcons = {
+    const statusIcons: Record<string, React.ReactNode> = {
         paid: <CheckCircle size={20} />,
         pending: <Clock size={20} />,
-        overdue: <AlertTriangle size={20} />
+        overdue: <AlertTriangle size={20} />,
+        cancelled: <AlertTriangle size={20} />
     };
 
     const formatDate = (dateStr: string) => {

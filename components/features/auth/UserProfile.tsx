@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/components/features/auth/AuthProvider';
-import { mockRoles, mockPermissions } from '@/lib/mockAdminData';
+// import { mockRoles, mockPermissions } from '@/lib/mockAdminData';
 import { Shield, Mail, User as UserIcon, CheckCircle, Key } from 'lucide-react';
 
 export default function UserProfile() {
@@ -10,16 +10,19 @@ export default function UserProfile() {
     if (!user) return null;
 
     // Encontrar el rol completo basado en el nombre del rol del usuario
-    const roleDetails = mockRoles.find(r => r.name === user.role) || {
+    const roleDetails = {
         label: user.role,
-        description: 'Rol desconocido',
-        permissions: []
+        description: 'Rol asignado',
+        permissions: user.permissions || []
     };
 
     // Encontrar los detalles de los permisos
-    const userPermissions = roleDetails.permissions.map(code => 
-        mockPermissions.find(p => p.code === code)
-    ).filter(Boolean);
+    const userPermissions = (user.permissions || []).map(code => ({
+        id: code,
+        code: code,
+        description: code,
+        module: 'SYSTEM'
+    }));
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">

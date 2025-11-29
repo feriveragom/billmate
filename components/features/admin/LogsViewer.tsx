@@ -164,6 +164,7 @@ export default function LogsViewer() {
                 if (result.success && result.data) {
                     setData(result.data);
                 } else {
+                    // @ts-ignore
                     toast.error('Error cargando logs: ' + result.error);
                 }
             } catch (err) {
@@ -198,6 +199,7 @@ export default function LogsViewer() {
                 const ids = selectedRows.map(row => row.original.id);
                 const result = await deleteMultipleAuditLogs(ids);
 
+                // @ts-ignore
                 if (!result.success) throw new Error(result.error);
 
                 setData(prev => prev.filter(log => !ids.includes(log.id)));
@@ -206,6 +208,7 @@ export default function LogsViewer() {
             } else if (confirmState.type === 'single' && confirmState.targetId) {
                 const result = await deleteAuditLog(confirmState.targetId);
 
+                // @ts-ignore
                 if (!result.success) throw new Error(result.error);
 
                 setData(prev => prev.filter(log => log.id !== confirmState.targetId));

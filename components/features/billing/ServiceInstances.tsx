@@ -119,6 +119,7 @@ export default function ServiceInstances({ showArchived = false }: ServiceInstan
         } else {
             const newInstance: ServiceInstance = {
                 id: `inst-${Date.now()}`,
+                userId: 'current-user', // Placeholder
                 definitionId: data.definitionId || '',
                 name: data.name || 'Nuevo Pago',
                 icon: data.icon || '📝',

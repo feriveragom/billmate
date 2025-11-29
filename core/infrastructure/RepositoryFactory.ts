@@ -3,10 +3,10 @@ import { IRoleRepository } from '@/core/domain/repositories/IRoleRepository';
 import { IPermissionRepository } from '@/core/domain/repositories/IPermissionRepository';
 import { IAuditLogRepository } from '@/core/domain/repositories/IAuditLogRepository';
 
-import { SupabaseUserRepository } from './repositories/SupabaseUserRepository';
-import { SupabaseRoleRepository } from './repositories/SupabaseRoleRepository';
-import { SupabasePermissionRepository } from './repositories/SupabasePermissionRepository';
-import { SupabaseAuditLogRepository } from './repositories/SupabaseAuditLogRepository';
+import { FirebaseUserRepository } from './repositories/FirebaseUserRepository';
+import { FirebaseRoleRepository } from './repositories/FirebaseRoleRepository';
+import { FirebasePermissionRepository } from './repositories/FirebasePermissionRepository';
+import { FirebaseAuditLogRepository } from './repositories/FirebaseAuditLogRepository';
 
 /**
  * Factory Pattern para crear instancias de repositorios.
@@ -25,28 +25,28 @@ class RepositoryFactory {
 
     static getUserRepository(): IUserRepository {
         if (!this.userRepository) {
-            this.userRepository = new SupabaseUserRepository();
+            this.userRepository = new FirebaseUserRepository();
         }
         return this.userRepository;
     }
 
     static getRoleRepository(): IRoleRepository {
         if (!this.roleRepository) {
-            this.roleRepository = new SupabaseRoleRepository();
+            this.roleRepository = new FirebaseRoleRepository();
         }
         return this.roleRepository;
     }
 
     static getPermissionRepository(): IPermissionRepository {
         if (!this.permissionRepository) {
-            this.permissionRepository = new SupabasePermissionRepository();
+            this.permissionRepository = new FirebasePermissionRepository();
         }
         return this.permissionRepository;
     }
 
     static getAuditLogRepository(): IAuditLogRepository {
         if (!this.auditLogRepository) {
-            this.auditLogRepository = new SupabaseAuditLogRepository();
+            this.auditLogRepository = new FirebaseAuditLogRepository();
         }
         return this.auditLogRepository;
     }

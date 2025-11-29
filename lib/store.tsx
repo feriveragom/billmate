@@ -46,7 +46,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [showArchivedView, setShowArchivedView] = useState(false);
 
-    // Load Initial Data - TODO: Connect to Real Supabase Repositories
+    // Load Initial Data - TODO: Connect to Real Repositories
     useEffect(() => {
         const loadData = async () => {
             if (!user) return; 
@@ -56,7 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadData();
     }, [user]);
 
-    // Actions (Controllers) - TODO: Connect to Real Supabase Repositories
+    // Actions (Controllers) - TODO: Connect to Real Repositories
     const addService = async (service: ServiceInstance) => {
         console.log("Store: Add service placeholder", service);
     };

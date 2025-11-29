@@ -107,6 +107,7 @@ export default function ServiceDefinitions() {
         } else {
             const newDefinition: ServiceDefinition = {
                 id: `def-${Date.now()}`,
+                userId: 'current-user', // Placeholder
                 name: data.name || 'Nuevo Servicio',
                 icon: data.icon || '📝',
                 category: data.category || 'General',
@@ -140,6 +141,7 @@ export default function ServiceDefinitions() {
         if (selectedDefForInstance) {
             const newInstance: ServiceInstance = {
                 id: `inst-${Date.now()}`,
+                userId: 'current-user', // Placeholder
                 definitionId: selectedDefForInstance.id,
                 name: data.name || selectedDefForInstance.name,
                 amount: data.amount || 0,
