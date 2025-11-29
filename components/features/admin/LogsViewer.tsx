@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Trash2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square } from 'lucide-react';
+import { Trash2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, CheckSquare, Square, Download } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
@@ -38,12 +38,11 @@ const LogCard = ({ row, onDelete }: { row: Row<AuditLog>, onDelete: (id: string)
     const isSelected = row.getIsSelected();
 
     return (
-        <div 
-            className={`p-3 rounded-xl border transition-all ${
-                isSelected 
-                ? 'bg-primary/10 border-primary/30' 
+        <div
+            className={`p-3 rounded-xl border transition-all ${isSelected
+                ? 'bg-primary/10 border-primary/30'
                 : 'bg-card border-foreground/10 hover:border-foreground/20'
-            }`}
+                }`}
         >
             <div className="flex gap-3 items-start">
                 {/* Checkbox */}
@@ -63,27 +62,26 @@ const LogCard = ({ row, onDelete }: { row: Row<AuditLog>, onDelete: (id: string)
                         <span className="text-sm font-medium text-foreground truncate">{log.user_email}</span>
                         <span className="text-[10px] text-foreground/40">{new Date(log.created_at).toLocaleString()}</span>
                     </div>
-                    
+
                     <div className="flex justify-end items-start">
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase ${
-                            log.action_type === 'DELETE' ? 'bg-red-500/20 text-red-400' :
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase ${log.action_type === 'DELETE' ? 'bg-red-500/20 text-red-400' :
                             log.action_type === 'LOGIN' ? 'bg-green-500/20 text-green-400' :
-                            log.action_type === 'LOGOUT' ? 'bg-orange-500/20 text-orange-400' :
-                            'bg-blue-500/20 text-blue-400'
-                        }`}>
+                                log.action_type === 'LOGOUT' ? 'bg-orange-500/20 text-orange-400' :
+                                    'bg-blue-500/20 text-blue-400'
+                            }`}>
                             {log.action_type}
                         </span>
                     </div>
 
                     {/* Row 2: Description | Delete Button */}
                     <div className="flex items-center min-w-0 pt-1">
-                         <p className="text-xs text-foreground/60 truncate" title={log.action_description}>
+                        <p className="text-xs text-foreground/60 truncate" title={log.action_description}>
                             {log.action_description}
                         </p>
                     </div>
 
                     <div className="flex justify-end items-center">
-                        <button 
+                        <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onDelete(log.id);
@@ -116,6 +114,8 @@ export default function LogsViewer() {
         const day = String(now.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     };
+
+
     const [startDate, setStartDate] = useState<string>(getLocalDate());
     const [endDate, setEndDate] = useState<string>(getLocalDate());
 
@@ -142,6 +142,8 @@ export default function LogsViewer() {
                 setUsers(result.data);
             }
         };
+
+
         fetchUsers();
     }, []);
 
@@ -170,6 +172,8 @@ export default function LogsViewer() {
                 setIsLoading(false);
             }
         };
+
+
         fetchLogs();
     }, [selectedUser, selectedAction, startDate, endDate]);
 
@@ -181,6 +185,8 @@ export default function LogsViewer() {
         }
         setConfirmState({ isOpen: true, type, targetId: id });
     };
+
+
 
     const confirmDelete = async () => {
         setConfirmState(prev => ({ ...prev, isOpen: false }));
@@ -211,6 +217,8 @@ export default function LogsViewer() {
             toast.error('Error al eliminar los registros: ' + err.message, { id: toastId });
         }
     };
+
+
 
     const columns = useMemo(
         () => [
@@ -299,6 +307,37 @@ export default function LogsViewer() {
         getSortedRowModel: getSortedRowModel(),
     });
 
+    const handleExport = () => {
+        const selectedRows = table.getSelectedRowModel().rows;
+        const selectedCount = selectedRows.length;
+
+        if (selectedCount === 0) {
+            toast.warning('Debes seleccionar al menos un registro para exportar.');
+            return;
+        }
+
+        const exportData = selectedRows.map(row => {
+            const log = row.original;
+            return `ID: ${log.id}
+Fecha: ${new Date(log.created_at).toLocaleString()}
+Usuario: ${log.user_email}
+Acción: ${log.action_type}
+Descripción: ${log.action_description}
+----------------------------------------`;
+        }).join('\n\n');
+
+        const blob = new Blob([exportData], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `audit_logs_export_${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast.success(`${selectedCount} registros exportados exitosamente.`);
+    };
+
     const userOptions = [
         { value: 'all', label: 'Todos los usuarios' },
         ...users.map(u => ({
@@ -325,14 +364,25 @@ export default function LogsViewer() {
                     </button>
 
                     <button
+                        onClick={handleExport}
+                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${selectedCount > 0
+                            ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/20'
+                            : 'bg-blue-500/10 text-blue-500 cursor-not-allowed border border-blue-500/10'
+                            }`}
+                    >
+                        <Download size={18} />
+                        <span className="hidden md:inline">Exportar {selectedCount > 0 ? `(${selectedCount})` : ''}</span>
+                    </button>
+
+                    <button
                         onClick={() => handleDeleteRequest('bulk')}
-                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${selectedCount > 0
+                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${selectedCount > 0
                             ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20'
                             : 'bg-red-500/10 text-red-500 cursor-not-allowed border border-red-500/10'
                             }`}
                     >
                         <Trash2 size={18} />
-                        <span>Eliminar {selectedCount > 0 ? `(${selectedCount})` : 'Selección'}</span>
+                        <span className="hidden md:inline">Eliminar {selectedCount > 0 ? `(${selectedCount})` : 'Selección'}</span>
                     </button>
                 </div>
             </div>
@@ -458,9 +508,9 @@ export default function LogsViewer() {
                         {/* VISTA DE TARJETAS (Móvil) */}
                         <div className="md:hidden space-y-3">
                             {table.getRowModel().rows.map(row => (
-                                <LogCard 
-                                    key={row.id} 
-                                    row={row} 
+                                <LogCard
+                                    key={row.id}
+                                    row={row}
                                     onDelete={(id) => handleDeleteRequest('single', id)}
                                 />
                             ))}

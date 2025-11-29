@@ -224,6 +224,39 @@ export async function updateRole(
 }
 
 /**
+ * Elimina un rol
+ */
+export async function deleteRole(roleId: string) {
+    try {
+        await verifyRoleManagement();
+
+        const adminClient = createAdminClient();
+
+        // 1. Eliminar relaciones rol-permiso
+        const { error: rpError } = await adminClient
+            .from('role_permissions')
+            .delete()
+            .eq('role_id', roleId);
+
+        if (rpError) throw rpError;
+
+        // 2. Eliminar el rol
+        const { error: roleError } = await adminClient
+            .from('roles')
+            .delete()
+            .eq('id', roleId);
+
+        if (roleError) throw roleError;
+
+        revalidatePath('/admin/roles');
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error deleting role:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Crea un nuevo permiso
  */
 export async function createPermission(permissionData: {
