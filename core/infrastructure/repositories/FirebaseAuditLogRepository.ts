@@ -4,9 +4,14 @@ import { adminDb } from '@/lib/firebase/admin';
 
 export class FirebaseAuditLogRepository implements IAuditLogRepository {
     async create(log: Omit<AuditLog, 'id' | 'createdAt'>): Promise<void> {
+        const now = new Date();
+        const expiresAt = new Date(now);
+        expiresAt.setDate(expiresAt.getDate() + 90); // TTL: 90 días
+
         await adminDb.collection('audit_logs').add({
             ...log,
-            createdAt: new Date()
+            createdAt: now,
+            expiresAt: expiresAt  // Campo requerido para TTL
         });
     }
 

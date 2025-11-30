@@ -121,7 +121,7 @@ export default function RolesGrid() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const { checkPermission } = useAuth();
-    const canManageRoles = checkPermission('admin.roles.manage');
+    const canManageRoles = checkPermission('roles.create');
 
     const fetchRolesAndPermissions = useCallback(async () => {
         setIsLoading(true);

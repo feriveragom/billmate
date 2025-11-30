@@ -8,8 +8,6 @@ npm install
 npm run dev
 ```
 
-> Para detalles técnicos de implementación, arquitectura y lógica de los motores, consultar: `MVP_Core_Implementation_Plan.md`.
-
 # BillMate
 
 > **Tu Asistente Financiero Personal: Centraliza, Organiza y Controla.**
@@ -66,3 +64,19 @@ Responde a la pregunta fundamental: **"¿Cuánto necesito para sobrevivir este m
 *   **Solicitud de Ayuda:** Un usuario podra solicitar ayuda a otro para pagar una factura.
 *   **Scrapping en Sitios Externos:** Mostrar tasas de cambio, info util publica.
 
+---
+
+## 🔐 Sistema de Permisos (RBAC)
+
+El sistema utiliza un control de acceso basado en permisos (**Permission-Driven**). Los roles son simplemente agrupadores de permisos.
+
+> 📘 **Documentación Técnica**: Para ver el listado completo de permisos, roles y su implementación en el código, consultar:
+> *   **Definición y Mapa de Implementación**: `.artifacts/PERMISSION_IMPLEMENTATION_MAP.md`
+> *   **Script de Inicialización (Fuente de Verdad de Datos)**: `scripts/seed-database.ts`
+
+### Roles del Sistema (Resumen)
+
+*   **SUPER_ADMIN**: Acceso total.
+*   **ADMIN**: Gestión de usuarios y contenido.
+*   **FREE_USER**: Funcionalidades básicas.
+*   **PREMIUM_USER**: Funcionalidades completas.

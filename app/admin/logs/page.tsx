@@ -1,9 +1,9 @@
-import LogsViewer from '@/components/features/admin/LogsViewer';
+import LogsViewer from '@/features/admin/components/LogsViewer';
 import ProtectedRoute from '@/core/auth/protected-route';
 
 export default function AdminLogsPage() {
     return (
-        <ProtectedRoute requiredPermission="admin.logs.view">
+        <ProtectedRoute requiredPermission="logs.view">
             <LogsViewer />
         </ProtectedRoute>
     );

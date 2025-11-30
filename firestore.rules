@@ -1,18 +1,58 @@
-rules_version='2'
-
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 12, 29);
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roleId;
+    }
+    
+    function hasPermission(permission) {
+      let role = get(/databases/$(database)/documents/roles/$(getUserRole()));
+      return permission in role.data.permissions;
+    }
+    
+    match /permissions/{permissionId} {
+      allow read: if isAuthenticated() && hasPermission('permissions.view');
+      allow create: if isAuthenticated() && hasPermission('permissions.create');
+      allow update: if isAuthenticated() && hasPermission('permissions.edit');
+      allow delete: if isAuthenticated() && hasPermission('permissions.delete');
+    }
+    
+    match /roles/{roleId} {
+      allow read: if isAuthenticated() && hasPermission('roles.view');
+      allow create: if isAuthenticated() && hasPermission('roles.create');
+      allow update: if isAuthenticated() && hasPermission('roles.permissions.assign');
+      allow delete: if isAuthenticated() && hasPermission('roles.delete') && !resource.data.isSystemRole;
+    }
+    
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (userId == request.auth.uid || hasPermission('users.view'));
+      allow update: if isAuthenticated() && hasPermission('users.edit.role');
+    }
+    
+    match /serviceDefinitions/{definitionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && hasPermission('services.definition.create') && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && hasPermission('services.definition.edit') && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && hasPermission('services.definition.delete') && resource.data.userId == request.auth.uid;
+    }
+    
+    match /serviceInstances/{instanceId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && hasPermission('services.instance.create') && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && hasPermission('services.instance.edit') && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && hasPermission('services.instance.delete') && resource.data.userId == request.auth.uid;
+    }
+    
+    match /activityLogs/{logId} {
+      allow read: if isAuthenticated() && (hasPermission('logs.view') || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated() && hasPermission('logs.delete');
+      allow update: if false;
     }
   }
 }

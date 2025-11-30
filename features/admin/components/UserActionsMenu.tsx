@@ -44,11 +44,11 @@ export default function UserActionsMenu({
     // Incluso si tienes permiso de editar roles, no deberías poder tocar a un Super Admin
     // a menos que tú también seas uno (lógica de negocio que podríamos refinar, pero por seguridad básica: no se toca)
     const isTargetSuperAdmin = user.role === 'SUPER_ADMIN';
-    
+
     // Permisos del usuario actual (el que opera el menú)
-    const canManageUsers = checkPermission('admin.users.manage');
-    const canManageRoles = checkPermission('admin.roles.manage');
-    const canViewLogs = checkPermission('admin.logs.view');
+    const canManageUsers = checkPermission('users.disable');
+    const canManageRoles = checkPermission('users.edit.role');
+    const canViewLogs = checkPermission('users.view.log');
 
     if (!canManageUsers && !canManageRoles && !canViewLogs) {
         return null; // Si no puede hacer nada, no mostrar menú
@@ -91,7 +91,7 @@ export default function UserActionsMenu({
                             </div>
                         )
                     )}
-                    
+
                     {/* Ver Logs */}
                     {canViewLogs && (
                         <Link

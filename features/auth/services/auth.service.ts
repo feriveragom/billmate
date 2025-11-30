@@ -1,43 +1,84 @@
-import { User } from '@/core/auth/auth-provider'; // Or define a Domain Entity
+import RepositoryFactory from '@/core/infrastructure/RepositoryFactory';
+import { adminDb } from '@/lib/firebase/admin';
 
 export class AuthService {
     async logAuthEvent(userId: string, userEmail: string, action: 'LOGIN' | 'LOGOUT', metadata?: any) {
-        console.log(`[MOCK] AuthService.logAuthEvent: ${action} for ${userEmail}`);
+        try {
+            const auditLogRepo = RepositoryFactory.getAuditLogRepository();
+            await auditLogRepo.create({
+                userId,
+                action,
+                targetId: userId,
+                details: `${action} for ${userEmail}`,
+                ipAddress: metadata?.browser || 'unknown'
+            });
+        } catch (error) {
+            console.error('[AuthService] Error logging event:', error);
+        }
         return { success: true };
     }
 
     async getUserProfileAndPermissions(userId: string) {
-        console.log(`[MOCK] AuthService.getUserProfileAndPermissions for ${userId}`);
+        try {
+            const userRepo = RepositoryFactory.getUserRepository();
+            const roleRepo = RepositoryFactory.getRoleRepository();
 
-        // Mock Profile
-        const mockProfile = {
-            id: userId,
-            email: 'mock@example.com',
-            fullName: 'Mock User',
-            avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-            roleId: 'SUPER_ADMIN',
-            isBanned: false,
-            createdAt: new Date().toISOString()
-        };
+            // 1. Buscar usuario en Firestore
+            let user = await userRepo.getById(userId);
 
-        // Mock Permissions (Super Admin has all)
-        const mockPermissions = [
-            'admin.users.manage',
-            'admin.roles.manage',
-            'admin.logs.view',
-            'service.create',
-            'service.read',
-            'service.update',
-            'service.delete',
-            'social.profile.view'
-        ];
+            // 2. Si no existe, obtener datos de Firebase Auth y crear con FREE_USER
+            if (!user) {
+                console.log(`[AuthService] Usuario ${userId} no encontrado. Creando nuevo usuario con rol FREE_USER...`);
 
-        return {
-            ...mockProfile,
-            role: mockProfile.roleId,
-            permissions: mockPermissions
-        };
+                // Obtener datos básicos de Firebase Auth
+                const admin = await import('firebase-admin');
+                const authUser = await admin.auth().getUser(userId);
+
+                // Crear usuario en Firestore
+                await adminDb.collection('users').doc(userId).set({
+                    email: authUser.email,
+                    fullName: authUser.displayName || 'Usuario',
+                    avatarUrl: authUser.photoURL || '',
+                    roleId: 'FREE_USER',
+                    isActive: true,
+                    createdAt: new Date(),
+                    lastLogin: new Date()
+                });
+
+                // Volver a consultar
+                user = await userRepo.getById(userId);
+            } else {
+                // Actualizar lastLogin
+                await adminDb.collection('users').doc(userId).update({
+                    lastLogin: new Date()
+                });
+            }
+
+            if (!user) {
+                throw new Error('Error creando usuario');
+            }
+
+            // 3. Obtener permisos del rol
+            const roles = await roleRepo.getAllWithPermissions();
+            const userRole = roles.find(r => r.id === user!.roleId);
+            const permissions = userRole?.permissions || [];
+
+            return {
+                id: user.id,
+                email: user.email,
+                fullName: user.fullName,
+                avatarUrl: user.avatarUrl,
+                role: user.roleId,
+                isBanned: user.isBanned,
+                permissions,
+                createdAt: user.createdAt
+            };
+        } catch (error) {
+            console.error('[AuthService] Error getting user profile:', error);
+            throw error;
+        }
     }
 }
 
 export const authService = new AuthService();
+

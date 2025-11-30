@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase/client';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signInWithRedirect, GoogleAuthProvider, signOut as firebaseSignOut, User as FirebaseUser } from 'firebase/auth';
 import { getUserProfileAndPermissions, logAuthEvent } from '@/features/auth/actions';
 
 export interface User {
@@ -94,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             sessionStorage.setItem(`role_${profile.id}`, profile.role);
             sessionStorage.setItem(`permissions_${profile.id}`, JSON.stringify(profile.permissions));
         } else {
-            console.warn("Usuario autenticado en Firebase pero sin perfil en Firestore");
             setUser({
                 id: firebaseUser.uid,
                 email: firebaseUser.email!,
@@ -122,10 +121,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
 
+            console.log('✅ [Login] Google sign-in successful:', user.email);
             await handleLogAuthEvent('LOGIN', user.email!, user.uid);
             router.push('/');
         } catch (error) {
-            console.error('Error signing in with Google:', error);
+            console.error('❌ [Login] Error signing in with Google:', error);
         }
     };
 

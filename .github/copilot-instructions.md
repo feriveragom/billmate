@@ -60,6 +60,36 @@ Asegura type safety e integridad de datos.
 - **Patrón**: `if (user.hasPermission('invoices.pay'))` ✅
 - **Anti-Patrón**: `if (user.role === 'ADMIN')` ❌
 
+#### 3.4.1. ¿Qué es un permiso?
+
+Un permiso es una acción atómica y específica que un usuario puede realizar sobre un recurso.
+
+#### 3.4.2 🔐 Sistema de Permisos (RBAC)
+
+El sistema utiliza un control de acceso basado en permisos (**Permission-Driven**). Los roles son simplemente agrupadores de permisos.
+
+**IMPORTANTE**: La fuente de verdad para los permisos es:
+1.  `.artifacts/PERMISSION_IMPLEMENTATION_MAP.md` (Documentación y Uso)
+2.  `scripts/seed-database.ts` (Definición de Datos)
+
+Consultar esos archivos para ver la lista actualizada de permisos disponibles.
+
+##### Roles del Sistema (Default)
+
+*   **SUPER_ADMIN**: Tiene **TODOS** los permisos.
+*   **ADMIN**: Gestión de usuarios y contenido.
+*   **FREE_USER**: Gestión básica de sus propios servicios.
+*   **PREMIUM_USER**: Acceso completo a funcionalidades de servicios.
+
+#### 3.4.3 Reglas No Negociables
+
+1. **Protección de Rutas**: Toda página/ruta protegida DEBE validar permisos antes de renderizar contenido.
+2. **Protección de Acciones**: Toda Server Action que modifique datos DEBE validar permisos al inicio.
+3. **UI Condicional**: Los elementos de UI (botones, enlaces, menús) DEBEN ocultarse si el usuario no tiene el permiso necesario.
+4. **Sin Verificación de Roles**: NUNCA verificar `user.role` directamente. SIEMPRE verificar permisos específicos.
+
+> 📘 **Implementación Técnica**: Ver `.artifacts/PERMISSION_IMPLEMENTATION_MAP.md` para patrones de código y ejemplos reales.
+
 ---
 
 ## 4. Estructura del Proyecto (Feature-Based)

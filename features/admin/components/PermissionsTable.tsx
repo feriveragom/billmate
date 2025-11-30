@@ -109,7 +109,7 @@ export default function PermissionsTable() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const { checkPermission } = useAuth();
-    const canManageRoles = checkPermission('admin.roles.manage');
+    const canManageRoles = checkPermission('permissions.create');
 
     const fetchPermissions = useCallback(async () => {
         setIsLoading(true);

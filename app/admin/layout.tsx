@@ -13,11 +13,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return (
         // 1. Protección de Nivel Superior: Acceso al Panel Admin
-        <ProtectedRoute requiredPermission="admin.access">
+        <ProtectedRoute requiredPermission="users.view">
             <div className="min-h-screen bg-background flex flex-col">
                 {/* Header Global en Admin */}
                 <TopHeader />
-                
+
                 <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                     {/* Sidebar Admin */}
                     <aside className="w-full lg:w-64 bg-card border-r border-white/10 p-6 flex flex-col gap-6 overflow-y-auto">
@@ -33,8 +33,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                         <nav className="space-y-1 flex-1">
                             {/* 2. Renderizado Condicional de Links por Permiso */}
-                            
-                            {checkPermission('admin.users.manage') && (
+
+                            {checkPermission('users.view') && (
                                 <AdminLink
                                     href="/admin/users"
                                     active={pathname === '/admin/users'}
@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 />
                             )}
 
-                            {checkPermission('admin.roles.manage') && (
+                            {checkPermission('permissions.view') && (
                                 <AdminLink
                                     href="/admin/permissions"
                                     active={pathname === '/admin/permissions'}
@@ -52,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 />
                             )}
 
-                            {checkPermission('admin.roles.manage') && (
+                            {checkPermission('roles.view') && (
                                 <AdminLink
                                     href="/admin/roles"
                                     active={pathname === '/admin/roles'}
@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 />
                             )}
 
-                            {checkPermission('admin.logs.view') && (
+                            {checkPermission('logs.view') && (
                                 <AdminLink
                                     href="/admin/logs"
                                     active={pathname === '/admin/logs'}

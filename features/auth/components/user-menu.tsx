@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 export default function UserMenu() {
-    const { user, signOut } = useAuth();
+    const { user, signOut, checkPermission } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const pathname = usePathname();
@@ -36,7 +36,7 @@ export default function UserMenu() {
 
     return (
         <div className="relative" ref={menuRef}>
-            <button 
+            <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 p-1 pr-3 rounded-full hover:bg-white/5 transition border border-transparent hover:border-white/10"
             >
@@ -57,21 +57,20 @@ export default function UserMenu() {
                         <p className="text-sm font-bold truncate">{user.name}</p>
                         <p className="text-xs text-foreground/50 truncate">{user.email}</p>
                     </div>
-                                        
-                    <Link 
-                        href="/" 
+
+                    <Link
+                        href="/"
                         onClick={() => setIsOpen(false)}
                         className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 transition group"
                     >
-                         <div className="w-4 h-4 flex items-center justify-center">
-                             <img src="/logo.png" alt="BillMate" className="w-full h-full object-contain" />
-                         </div>
-                         <span className="text-lg font-bold text-primary tracking-tight leading-none">billmate</span>
-                         {user.role === 'PREMIUM_USER' && <span className="text-[10px] bg-primary/20 text-primary px-1.5 rounded font-bold ml-auto">PRO</span>}
+                        <div className="w-4 h-4 flex items-center justify-center">
+                            <img src="/logo.png" alt="BillMate" className="w-full h-full object-contain" />
+                        </div>
+                        <span className="text-lg font-bold text-primary tracking-tight leading-none">billmate</span>
                     </Link>
 
-                    <Link 
-                        href="/profile" 
+                    <Link
+                        href="/profile"
                         onClick={() => setIsOpen(false)}
                         className="flex items-center gap-3 px-3 py-2 text-sm rounded-xl hover:bg-white/5 text-foreground/70 hover:text-primary transition"
                     >
@@ -79,9 +78,9 @@ export default function UserMenu() {
                         Mi Perfil
                     </Link>
 
-                    {user.role === 'SUPER_ADMIN' && !isAdminRoute && (
-                        <Link 
-                            href="/admin" 
+                    {checkPermission('users.view') && !isAdminRoute && (
+                        <Link
+                            href="/admin"
                             onClick={() => setIsOpen(false)}
                             className="flex items-center gap-3 px-3 py-2 text-sm rounded-xl hover:bg-white/5 text-foreground/70 hover:text-primary transition"
                         >
@@ -89,10 +88,10 @@ export default function UserMenu() {
                             Admin Panel
                         </Link>
                     )}
-                    
+
                     <div className="h-px bg-white/5 my-1" />
-                    
-                    <button 
+
+                    <button
                         onClick={() => {
                             setIsOpen(false);
                             signOut();
